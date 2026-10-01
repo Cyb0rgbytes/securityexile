@@ -22,7 +22,7 @@ export function CursorHeading({ level = 2, children, prompt, className = "" }: P
   return (
     <Tag className={`cursor-blink font-mono font-bold tracking-tight text-fg ${sizes[level]} ${className}`}>
       {prompt && (
-        <span aria-hidden="true" className="mr-2 text-neon">
+        <span aria-hidden="true" className="mr-2 text-green">
           {prompt}
         </span>
       )}

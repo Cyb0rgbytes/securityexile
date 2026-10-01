@@ -3,8 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { FxProvider } from "@/lib/fx/FxProvider";
 import { fxInitScript } from "@/lib/fx/init-script";
-import { MatrixRain } from "@/components/fx/MatrixRain";
-import { Scanlines } from "@/components/fx/Scanlines";
+import { BackgroundVideo } from "@/components/fx/BackgroundVideo";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SkipLink } from "@/components/layout/SkipLink";
@@ -24,11 +23,11 @@ const grotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Security Exile — CTF teams, war rooms & writeups",
+    default: "Security Exile — learn security by doing",
     template: "%s · Security Exile",
   },
   description:
-    "A community platform for CTF players: build teams, coordinate live events in a private war room, and publish spoiler-locked writeups.",
+    "A cybersecurity learning community: writeups, walkthroughs and research by members, skill tracking, study teams and practice events.",
 };
 
 export const viewport: Viewport = {
@@ -51,13 +50,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-full flex-col">
         <FxProvider>
           <SkipLink />
-          <MatrixRain />
+          <BackgroundVideo />
           <Header />
           <main id="main" className="flex-1">
             {children}
           </main>
           <Footer />
-          <Scanlines />
+          <div aria-hidden="true" className="grain" />
         </FxProvider>
       </body>
     </html>

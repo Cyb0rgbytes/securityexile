@@ -1,65 +1,53 @@
 import { CursorHeading } from "@/components/fx/CursorHeading";
-import { GlassPanel } from "@/components/ui/GlassPanel";
 
 const FEATURES = [
   {
-    cmd: "team --create",
-    title: "Teams",
-    body: "Captains, co-captains, reserves. Open, invite-only, or closed rosters with join requests.",
-    accent: "text-neon",
+    glyph: ">_",
+    title: "Writeups and walkthroughs",
+    body: "Markdown with terminal output blocks and syntax highlighting. Group posts into series. Writeups tied to a live event stay hidden until it ends.",
   },
   {
-    cmd: "invite --private",
+    glyph: "◎",
+    title: "Skill dossier",
+    body: "A profile that shows what you can do: a skill radar, badges, rank, and everything you've published.",
+  },
+  {
+    glyph: "⌘",
+    title: "Study teams",
+    body: "Form a team with people at your level or ahead of it. Captains, co-captains and reserves; open, invite-only or closed.",
+  },
+  {
+    glyph: "⚑",
+    title: "Practice events",
+    body: "A board of upcoming CTFs. Register your team and get a private war room to claim challenges, track solves and share notes.",
+  },
+  {
+    glyph: "#",
     title: "Invite codes",
-    body: "Expiring, revocable TEAM-XXXX-XXXX codes. Hashed at rest, every redemption logged.",
-    accent: "text-cyan",
+    body: "Bring people in with codes that expire, cap their uses and can be revoked. Every redemption is logged.",
   },
   {
-    cmd: "warroom --live",
-    title: "War room",
-    body: "Per-event private board: claim challenges, track solves, share notes and links.",
-    accent: "text-magenta",
-  },
-  {
-    cmd: "writeup --spoiler-lock",
-    title: "Writeups",
-    body: "Markdown with terminal blocks and syntax highlighting. Hidden until the event ends.",
-    accent: "text-neon",
-  },
-  {
-    cmd: "whoami",
-    title: "Dossier",
-    body: "Skill radar, badges, ranks and seasonal leaderboards for players and teams.",
-    accent: "text-cyan",
-  },
-  {
-    cmd: "ctrl+k",
+    glyph: "⌨",
     title: "Terminal palette",
-    body: "Navigate with cd, ls, search and join. Some commands aren't documented. Look around.",
-    accent: "text-magenta",
+    body: "Press Ctrl+K to navigate with cd, ls, search and join. A few commands aren't documented. Look around.",
   },
 ];
 
 export function FeatureGrid() {
   return (
-    <section aria-labelledby="features-heading" className="mx-auto mt-28 max-w-6xl px-4 sm:px-6">
+    <section aria-labelledby="features-heading" className="mx-auto mt-16 max-w-6xl px-4 sm:px-6">
       <div id="features-heading">
-        <CursorHeading prompt="~/">features</CursorHeading>
+        <CursorHeading prompt="~/">what&apos;s inside</CursorHeading>
       </div>
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
-          <GlassPanel
-            as="li"
-            key={f.title}
-            className="group p-5 transition-[border-color,box-shadow] duration-300 hover:border-line-strong hover:shadow-[0_0_24px_rgb(0_229_255/0.12)]"
-          >
-            <p className={`font-mono text-xs ${f.accent}`}>
-              <span aria-hidden="true">$ </span>
-              {f.cmd}
+          <li key={f.title} className="glass bracketed p-5">
+            <p aria-hidden="true" className="font-mono text-lg leading-none text-green">
+              {f.glyph}
             </p>
-            <h3 className="mt-3 text-xl font-semibold text-fg">{f.title}</h3>
+            <h3 className="mt-4 text-lg font-semibold text-fg">{f.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-fg-muted">{f.body}</p>
-          </GlassPanel>
+          </li>
         ))}
       </ul>
     </section>

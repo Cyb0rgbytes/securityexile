@@ -20,22 +20,22 @@ export default function SecurityPage() {
       </p>
 
       <GlassPanel className="mt-8 space-y-4 p-6 text-sm leading-relaxed">
-        <h2 className="font-mono text-cyan">in scope</h2>
+        <h2 className="font-mono text-green">in scope</h2>
         <ul className="list-inside list-disc text-fg-muted">
           <li>Authorization bypasses on teams, invites, war rooms and writeups</li>
           <li>XSS / HTML injection via markdown, profiles or comments</li>
           <li>Spoiler-lock bypasses that reveal writeups before an event ends</li>
           <li>Invite-code brute forcing or rate-limit bypasses</li>
         </ul>
-        <h2 className="font-mono text-cyan">out of scope</h2>
+        <h2 className="font-mono text-green">out of scope</h2>
         <ul className="list-inside list-disc text-fg-muted">
           <li>Denial of service and volumetric testing</li>
           <li>Social engineering of members or staff</li>
           <li>The hidden easter-egg flags. Those are meant to be found.</li>
         </ul>
-        <h2 className="font-mono text-cyan">how to report</h2>
+        <h2 className="font-mono text-green">how to report</h2>
         <p className="text-fg-muted">
-          See <a className="text-neon underline" href="/.well-known/security.txt">security.txt</a> for
+          See <a className="text-green underline" href="/.well-known/security.txt">security.txt</a> for
           the current contact. Please give us reasonable time to fix the issue before disclosing it.
           We won&apos;t pursue action against good-faith research that follows this policy.
         </p>

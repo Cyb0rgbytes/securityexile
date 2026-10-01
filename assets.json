@@ -1,20 +1,44 @@
 {
-  "$comment": "Higgsfield-generated assets. One entry per shipped file; keep the exact prompt so assets can be regenerated or varied.",
-  "assets": [
+  "$comment": "Brand and generated assets. Higgsfield entries keep the exact prompt so they can be regenerated or varied. Raw originals live in brand-src/ (git-ignored).",
+  "brand": [
+    {
+      "id": "crest",
+      "source": "brand-src/Logo.png (supplied by the community, 1200x1280 transparent PNG)",
+      "files": [
+        "public/assets/brand/falcon-960.webp",
+        "public/assets/brand/falcon-480.webp",
+        "public/assets/brand/falcon-64.webp",
+        "src/app/icon.png",
+        "src/app/apple-icon.png"
+      ],
+      "script": "scripts/brand-assets.mjs",
+      "notes": "Trimmed to 1200x1113 before resizing."
+    },
+    {
+      "id": "background-loop",
+      "source": "brand-src/background.mp4 (supplied, 5s 1080p 10-bit HEVC 42 Mbps with audio)",
+      "files": [
+        "public/assets/bg/bg-1080.webm",
+        "public/assets/bg/bg-1080.mp4",
+        "public/assets/bg/bg-720.webm",
+        "public/assets/bg/bg-720.mp4",
+        "public/assets/bg/bg-poster.webp"
+      ],
+      "script": "scripts/encode-bg.sh",
+      "notes": "Ping-pong (forward + reversed) 10s loop, hue shifted -40deg toward brand green, 8-bit, silent."
+    }
+  ],
+  "higgsfield": [
     {
       "id": "hero-core-poster",
-      "files": [
-        "public/assets/hero/core-poster.webp",
-        "public/assets/hero/core-poster-640.webp"
-      ],
-      "purpose": "Landing hero fallback (low-FX, reduced motion, no WebGL) and art reference for the code-built R3F network core",
+      "status": "retired",
+      "retired_reason": "Hero rebuilt around the community crest and background loop (2026-10-02). Files removed; kept for the record and prompt reuse.",
       "tool": "generate_image",
       "model": "gpt_image_2_5",
       "aspect_ratio": "1:1",
       "job_id": "f9a979c8-d165-4018-80b7-e6c6024234d1",
       "credits": 0.25,
       "created": "2026-10-01",
-      "post": "sharp: resize 1024 & 640, webp q82/q78",
       "prompt": "A holographic 'network core': a glowing geodesic wireframe sphere (icosahedron lattice of thin luminous lines) floating dead-center, with a faint inner energy glow. Around it, three tilted thin orbital rings carry small bright spherical data nodes, connected to the core by faint dashed light filaments. Colors: neon cyan #00e5ff and neon green #00ff9c light on a pure near-black #05070a background, with a single tiny magenta #ff2bd6 accent node. Soft bloom glow, subtle particle dust, slight depth of field. Sci-fi hacker interface aesthetic, clean, minimal, high contrast. Object fully in frame with generous dark margin on all sides, nothing touching the edges. No text, no letters, no logos, no UI, no people, no floor."
     }
   ]

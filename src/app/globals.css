@@ -2,40 +2,44 @@
 
 /*
  * Security Exile design tokens.
- * Single dark look by design: the whole palette is defined on :root and the
- * page always paints its own background.
+ * Palette is derived from the community crest (falcon + flag fingerprint):
+ * emerald, signal red, bone white on near-black. Single dark look by design.
  */
 :root {
   color-scheme: dark;
 
   --se-bg: #05070a;
-  --se-bg-raised: #0a0f14;
-  --se-fg: #d7e2ea;
-  --se-fg-muted: #8a9aa8;
-  --se-neon: #00ff9c;
-  --se-cyan: #00e5ff;
-  --se-magenta: #ff2bd6;
-  --se-danger: #ff4d6d;
+  --se-bg-deep: #030507;
+  --se-bg-raised: #0a1210;
+  --se-fg: #f2efe9; /* bone */
+  --se-fg-muted: #93a09b;
+  --se-green: #00c46a;
+  --se-green-bright: #2bff9a;
+  --se-red: #e8192c;
+  --se-red-bright: #ff4d5c;
+  --se-cyan: #5fd7e8; /* residual, lines only */
 
-  --se-glass: rgb(10 18 24 / 0.55);
-  --se-border: rgb(0 229 255 / 0.18);
-  --se-border-strong: rgb(0 229 255 / 0.45);
-  --se-glow-neon: 0 0 12px rgb(0 255 156 / 0.45);
-  --se-glow-cyan: 0 0 14px rgb(0 229 255 / 0.4);
+  --se-glass: rgb(8 16 13 / 0.6);
+  --se-line: rgb(0 196 106 / 0.16);
+  --se-line-strong: rgb(0 196 106 / 0.42);
+  --se-glow-green: 0 0 14px rgb(0 196 106 / 0.45);
+  --se-glow-red: 0 0 14px rgb(232 25 44 / 0.45);
 }
 
 @theme inline {
   --color-bg: var(--se-bg);
+  --color-bg-deep: var(--se-bg-deep);
   --color-bg-raised: var(--se-bg-raised);
   --color-fg: var(--se-fg);
   --color-fg-muted: var(--se-fg-muted);
-  --color-neon: var(--se-neon);
+  --color-green: var(--se-green);
+  --color-green-bright: var(--se-green-bright);
+  --color-red: var(--se-red);
+  --color-red-bright: var(--se-red-bright);
   --color-cyan: var(--se-cyan);
-  --color-magenta: var(--se-magenta);
-  --color-danger: var(--se-danger);
   --color-glass: var(--se-glass);
-  --color-line: var(--se-border);
-  --color-line-strong: var(--se-border-strong);
+  --color-line: var(--se-line);
+  --color-line-strong: var(--se-line-strong);
 
   --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "Cascadia Code", Consolas, monospace;
@@ -45,19 +49,21 @@ html {
   background: var(--se-bg);
 }
 
+/* html owns the page colour; body stays transparent so the fixed -z-10
+ * background layer (BackgroundVideo) isn't painted over by body's box. */
 body {
-  background: var(--se-bg);
+  background: transparent;
   color: var(--se-fg);
   font-family: var(--font-sans);
 }
 
 ::selection {
-  background: rgb(0 255 156 / 0.3);
+  background: rgb(0 196 106 / 0.35);
   color: #fff;
 }
 
 :focus-visible {
-  outline: 2px solid var(--se-neon);
+  outline: 2px solid var(--se-green-bright);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -66,21 +72,46 @@ body {
 
 @utility glass {
   background: var(--se-glass);
-  border: 1px solid var(--se-border);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--se-line);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
 }
 
 @utility neon-border {
-  border: 1px solid var(--se-border-strong);
+  border: 1px solid var(--se-line-strong);
   box-shadow:
-    var(--se-glow-cyan),
-    inset 0 0 18px rgb(0 229 255 / 0.06);
+    var(--se-glow-green),
+    inset 0 0 18px rgb(0 196 106 / 0.06);
 }
 
 @utility text-glow {
-  text-shadow: 0 0 10px currentColor;
+  text-shadow: 0 0 12px currentColor;
+}
+
+/* Corner brackets: structural frame for cards (static, not a hover trick). */
+@utility bracketed {
+  position: relative;
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: var(--se-line-strong);
+    border-style: solid;
+    pointer-events: none;
+  }
+  &::before {
+    top: -1px;
+    left: -1px;
+    border-width: 1px 0 0 1px;
+  }
+  &::after {
+    bottom: -1px;
+    right: -1px;
+    border-width: 0 1px 1px 0;
+  }
 }
 
 /* ---------- Blinking cursor ---------- */
@@ -88,8 +119,8 @@ body {
 @utility cursor-blink {
   &::after {
     content: "_";
-    margin-left: 0.1em;
-    color: var(--se-neon);
+    margin-left: 0.08em;
+    color: var(--se-red);
     animation: se-blink 1.05s steps(1) infinite;
   }
 }
@@ -100,7 +131,7 @@ body {
   }
 }
 
-/* ---------- Glitch on hover/focus (needs data-text attr) ---------- */
+/* ---------- Glitch text (red/green channels, hover/focus or one-shot) ---------- */
 
 .glitch {
   position: relative;
@@ -117,79 +148,239 @@ body {
 }
 
 .glitch::before {
-  color: var(--se-cyan);
+  color: var(--se-red);
 }
 
 .glitch::after {
-  color: var(--se-magenta);
+  color: var(--se-green-bright);
 }
 
 .glitch:hover::before,
-.glitch:focus-visible::before {
-  opacity: 0.8;
-  animation: se-glitch-a 380ms steps(2) 1;
+.glitch:focus-visible::before,
+.glitch-boot::before {
+  animation: se-glitch-a 420ms steps(2) 1;
 }
 
 .glitch:hover::after,
-.glitch:focus-visible::after {
-  opacity: 0.8;
-  animation: se-glitch-b 380ms steps(2) 1;
+.glitch:focus-visible::after,
+.glitch-boot::after {
+  animation: se-glitch-b 420ms steps(2) 1;
+}
+
+.glitch-boot::before,
+.glitch-boot::after {
+  animation-delay: 1.1s; /* fires as the crest finishes booting */
 }
 
 @keyframes se-glitch-a {
-  0% { transform: translate(0); clip-path: inset(0 0 60% 0); }
-  50% { transform: translate(-2px, 1px); clip-path: inset(40% 0 20% 0); }
-  100% { transform: translate(0); clip-path: inset(80% 0 0 0); opacity: 0; }
+  0% { opacity: 0.9; transform: translate(-3px, 0); clip-path: inset(0 0 62% 0); }
+  50% { opacity: 0.9; transform: translate(2px, 1px); clip-path: inset(38% 0 22% 0); }
+  100% { opacity: 0; transform: translate(0); clip-path: inset(82% 0 0 0); }
 }
 
 @keyframes se-glitch-b {
-  0% { transform: translate(0); clip-path: inset(60% 0 0 0); }
-  50% { transform: translate(2px, -1px); clip-path: inset(10% 0 55% 0); }
-  100% { transform: translate(0); clip-path: inset(0 0 85% 0); opacity: 0; }
+  0% { opacity: 0.9; transform: translate(3px, 0); clip-path: inset(58% 0 0 0); }
+  50% { opacity: 0.9; transform: translate(-2px, -1px); clip-path: inset(12% 0 56% 0); }
+  100% { opacity: 0; transform: translate(0); clip-path: inset(0 0 86% 0); }
 }
 
-/* ---------- CRT scanlines overlay ---------- */
+/* ---------- Crest (falcon) boot-up + idle micro-glitch ----------
+ * .crest        wrapper
+ * .crest-img    the real <img>, revealed by a stepped scanline wipe
+ * .crest-ch     red/green silhouettes (CSS mask of the same image) that flash
+ *               in slices during boot and on a slow idle tick
+ * .crest-scan   bright bar riding the wipe edge
+ * .crest-glow   breathing radial glow behind everything                   */
 
-.scanlines {
+.crest {
+  position: relative;
+  isolation: isolate;
+}
+
+.crest-glow {
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 42%, rgb(0 196 106 / 0.28), transparent 70%),
+    radial-gradient(ellipse 35% 30% at 50% 78%, rgb(232 25 44 / 0.22), transparent 70%);
+  animation: se-breathe 6.5s ease-in-out infinite;
+}
+
+@keyframes se-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+.crest-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: se-crest-reveal 1s steps(22) 0.15s both;
+}
+
+@keyframes se-crest-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.crest-scan {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--se-green-bright), transparent);
+  box-shadow: 0 0 18px 4px rgb(43 255 154 / 0.45);
+  animation: se-crest-scan 1s linear 0.15s both;
+  opacity: 0;
+}
+
+@keyframes se-crest-scan {
+  0% { top: 0; opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.crest-ch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mask: var(--crest-src) center / contain no-repeat;
+  -webkit-mask: var(--crest-src) center / contain no-repeat;
+}
+
+.crest-ch-r {
+  background: var(--se-red);
+  animation:
+    se-crest-boot-r 0.9s steps(3) 0.35s 1,
+    se-crest-tick-r 9s steps(2) 3s infinite;
+}
+
+.crest-ch-g {
+  background: var(--se-green-bright);
+  animation:
+    se-crest-boot-g 0.9s steps(3) 0.35s 1,
+    se-crest-tick-g 11s steps(2) 5s infinite;
+}
+
+@keyframes se-crest-boot-r {
+  0% { opacity: 0.85; transform: translate(-10px, 0); clip-path: inset(10% 0 70% 0); }
+  40% { opacity: 0.85; transform: translate(6px, 0); clip-path: inset(45% 0 35% 0); }
+  70% { opacity: 0.85; transform: translate(-4px, 0); clip-path: inset(72% 0 8% 0); }
+  100% { opacity: 0; }
+}
+
+@keyframes se-crest-boot-g {
+  0% { opacity: 0.85; transform: translate(10px, 0); clip-path: inset(25% 0 55% 0); }
+  40% { opacity: 0.85; transform: translate(-6px, 0); clip-path: inset(55% 0 25% 0); }
+  70% { opacity: 0.85; transform: translate(4px, 0); clip-path: inset(5% 0 80% 0); }
+  100% { opacity: 0; }
+}
+
+/* Idle: invisible almost always, two quick slices near the end of the cycle. */
+@keyframes se-crest-tick-r {
+  0%, 96% { opacity: 0; transform: none; }
+  96.5% { opacity: 0.8; transform: translate(-6px, 0); clip-path: inset(30% 0 55% 0); }
+  98% { opacity: 0.8; transform: translate(4px, 0); clip-path: inset(62% 0 20% 0); }
+  99%, 100% { opacity: 0; }
+}
+
+@keyframes se-crest-tick-g {
+  0%, 96% { opacity: 0; transform: none; }
+  96.5% { opacity: 0.8; transform: translate(6px, 0); clip-path: inset(50% 0 30% 0); }
+  98% { opacity: 0.8; transform: translate(-4px, 0); clip-path: inset(12% 0 70% 0); }
+  99%, 100% { opacity: 0; }
+}
+
+/* ---------- Signal divider: hairline with a red pulse travelling along it ---------- */
+
+.signal {
+  position: relative;
+  height: 1px;
+  background: var(--se-line);
+  overflow: hidden;
+}
+
+.signal::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 18%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--se-red), transparent);
+  animation: se-signal 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes se-signal {
+  0% { left: -20%; }
+  60%, 100% { left: 110%; }
+}
+
+/* ---------- Live chip ---------- */
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--se-red);
+  box-shadow: var(--se-glow-red);
+  animation: se-blink 1.4s ease-in-out infinite;
+}
+
+/* ---------- Film grain + vignette overlay ---------- */
+
+.grain {
   position: fixed;
   inset: 0;
   z-index: 60;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgb(255 255 255 / 0.025) 0px,
-    rgb(255 255 255 / 0.025) 1px,
-    transparent 1px,
-    transparent 3px
-  );
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   mix-blend-mode: overlay;
 }
 
-.scanlines::after {
+.grain::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.45) 100%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.5) 100%);
 }
 
 /* ---------- Low-FX / reduced motion ----------
  * data-fx is stamped on <html> by the pre-paint script and FxProvider.
- * CSS-only effects switch off here without any JS. */
+ * Everything decorative resolves to its final, static state here. */
 
-[data-fx="low"] .scanlines,
-[data-fx="low"] .fx-only {
+[data-fx="low"] .fx-only,
+[data-fx="low"] .crest-ch,
+[data-fx="low"] .crest-scan,
+[data-fx="low"] .signal::after {
   display: none;
 }
 
+[data-fx="low"] .crest-img,
+[data-fx="low"] .crest-glow,
+[data-fx="low"] .live-dot,
+[data-fx="low"] .cursor-blink::after,
 [data-fx="low"] .glitch::before,
-[data-fx="low"] .glitch::after,
-[data-fx="low"] .cursor-blink::after {
+[data-fx="low"] .glitch::after {
   animation: none;
+}
+
+[data-fx="low"] .crest-img {
+  clip-path: none;
 }
 
 [data-fx="low"] .glitch::before,
 [data-fx="low"] .glitch::after {
   opacity: 0;
+}
+
+[data-fx="low"] .grain {
+  opacity: 0.04;
 }
 
 @media (prefers-reduced-motion: reduce) {

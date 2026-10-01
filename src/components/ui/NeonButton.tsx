@@ -1,16 +1,17 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type Variant = "primary" | "ghost";
+type Variant = "primary" | "danger" | "ghost";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 font-mono text-sm font-semibold uppercase tracking-wider transition-[box-shadow,background-color,color] duration-200";
+  "inline-flex items-center justify-center gap-2 rounded px-5 py-2.5 font-mono text-sm font-semibold transition-[box-shadow,background-color,color,border-color] duration-200";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-neon text-bg shadow-[0_0_0_1px_var(--se-neon)] hover:shadow-[0_0_22px_rgb(0_255_156/0.55)]",
+    "bg-green text-bg-deep hover:bg-green-bright hover:shadow-[0_0_24px_rgb(0_196_106/0.5)]",
+  danger: "bg-red text-fg hover:bg-red-bright hover:shadow-[0_0_24px_rgb(232_25_44/0.5)]",
   ghost:
-    "border border-line-strong text-cyan hover:bg-cyan/10 hover:shadow-[0_0_18px_rgb(0_229_255/0.35)]",
+    "border border-line-strong text-fg hover:border-green-bright hover:text-green-bright hover:shadow-[0_0_18px_rgb(0_196_106/0.25)]",
 };
 
 interface Props {
