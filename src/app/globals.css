@@ -1,26 +1,204 @@
 @import "tailwindcss";
 
+/*
+ * Security Exile design tokens.
+ * Single dark look by design: the whole palette is defined on :root and the
+ * page always paints its own background.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  --se-bg: #05070a;
+  --se-bg-raised: #0a0f14;
+  --se-fg: #d7e2ea;
+  --se-fg-muted: #8a9aa8;
+  --se-neon: #00ff9c;
+  --se-cyan: #00e5ff;
+  --se-magenta: #ff2bd6;
+  --se-danger: #ff4d6d;
+
+  --se-glass: rgb(10 18 24 / 0.55);
+  --se-border: rgb(0 229 255 / 0.18);
+  --se-border-strong: rgb(0 229 255 / 0.45);
+  --se-glow-neon: 0 0 12px rgb(0 255 156 / 0.45);
+  --se-glow-cyan: 0 0 14px rgb(0 229 255 / 0.4);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--se-bg);
+  --color-bg-raised: var(--se-bg-raised);
+  --color-fg: var(--se-fg);
+  --color-fg-muted: var(--se-fg-muted);
+  --color-neon: var(--se-neon);
+  --color-cyan: var(--se-cyan);
+  --color-magenta: var(--se-magenta);
+  --color-danger: var(--se-danger);
+  --color-glass: var(--se-glass);
+  --color-line: var(--se-border);
+  --color-line-strong: var(--se-border-strong);
+
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "Cascadia Code", Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--se-bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--se-bg);
+  color: var(--se-fg);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: rgb(0 255 156 / 0.3);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--se-neon);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------- Panels ---------- */
+
+@utility glass {
+  background: var(--se-glass);
+  border: 1px solid var(--se-border);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+@utility neon-border {
+  border: 1px solid var(--se-border-strong);
+  box-shadow:
+    var(--se-glow-cyan),
+    inset 0 0 18px rgb(0 229 255 / 0.06);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* ---------- Blinking cursor ---------- */
+
+@utility cursor-blink {
+  &::after {
+    content: "_";
+    margin-left: 0.1em;
+    color: var(--se-neon);
+    animation: se-blink 1.05s steps(1) infinite;
+  }
+}
+
+@keyframes se-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Glitch on hover/focus (needs data-text attr) ---------- */
+
+.glitch {
+  position: relative;
+  display: inline-block;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glitch::before {
+  color: var(--se-cyan);
+}
+
+.glitch::after {
+  color: var(--se-magenta);
+}
+
+.glitch:hover::before,
+.glitch:focus-visible::before {
+  opacity: 0.8;
+  animation: se-glitch-a 380ms steps(2) 1;
+}
+
+.glitch:hover::after,
+.glitch:focus-visible::after {
+  opacity: 0.8;
+  animation: se-glitch-b 380ms steps(2) 1;
+}
+
+@keyframes se-glitch-a {
+  0% { transform: translate(0); clip-path: inset(0 0 60% 0); }
+  50% { transform: translate(-2px, 1px); clip-path: inset(40% 0 20% 0); }
+  100% { transform: translate(0); clip-path: inset(80% 0 0 0); opacity: 0; }
+}
+
+@keyframes se-glitch-b {
+  0% { transform: translate(0); clip-path: inset(60% 0 0 0); }
+  50% { transform: translate(2px, -1px); clip-path: inset(10% 0 55% 0); }
+  100% { transform: translate(0); clip-path: inset(0 0 85% 0); opacity: 0; }
+}
+
+/* ---------- CRT scanlines overlay ---------- */
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.025) 0px,
+    rgb(255 255 255 / 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.45) 100%);
+}
+
+/* ---------- Low-FX / reduced motion ----------
+ * data-fx is stamped on <html> by the pre-paint script and FxProvider.
+ * CSS-only effects switch off here without any JS. */
+
+[data-fx="low"] .scanlines,
+[data-fx="low"] .fx-only {
+  display: none;
+}
+
+[data-fx="low"] .glitch::before,
+[data-fx="low"] .glitch::after,
+[data-fx="low"] .cursor-blink::after {
+  animation: none;
+}
+
+[data-fx="low"] .glitch::before,
+[data-fx="low"] .glitch::after {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,7 @@
+# TODO(phase 7): replace the placeholder domain/contact with the production values
+# and set Expires to <= 1 year from deployment. Optionally sign with PGP.
+Contact: https://securityexile.example/security
+Expires: 2027-10-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://securityexile.example/.well-known/security.txt
+Policy: https://securityexile.example/security
