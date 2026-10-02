@@ -1,5 +1,5 @@
 import "server-only";
-import { gt } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { events } from "@/lib/db/schema";
 import { requestNow } from "@/lib/events/clock";
@@ -10,10 +10,12 @@ import { listSeriesOf } from "./queries";
 export async function editorChoices(memberId: string) {
   const db = getDb();
   const since = new Date(requestNow() - 90 * 86_400_000);
-  const [evs, series, membership] = await Promise.all([
-    db.select({ id: events.id, title: events.title }).from(events).where(gt(events.endsAt, since)).limit(200),
+  const membership = await findMembershipOf(db, memberId);
+  // Hidden events are only offered to the team that added them (same rule as the event pages).
+  const visible = membership ? or(isNull(events.hiddenAt), eq(events.ownerTeamId, membership.team.id)) : isNull(events.hiddenAt);
+  const [evs, series] = await Promise.all([
+    db.select({ id: events.id, title: events.title }).from(events).where(and(gt(events.endsAt, since), visible)).limit(200),
     listSeriesOf(db, memberId),
-    findMembershipOf(db, memberId),
   ]);
   return { events: evs, series, hasTeam: !!membership };
 }

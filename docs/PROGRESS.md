@@ -11,8 +11,9 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 | 2. Auth + DB schema | Done, verified end to end by the owner (first member: @darktemplar) | `7625885` + redirect fix |
 | 3. Teams + invite codes + join requests | Done; two-person code redemption still to be tried by the owner (see Phase 3) | `f938c64` |
 | — Early deploy to Cloudflare Workers | Live at https://app.securityexile.com | `bd95fa6`…`0a8cb86` |
-| 4. Events + war room | Merged to local `main` (`cdac518`), not pushed; go-live waits for owner approval | see Phase 4 |
-| 5–7 | Not started | |
+| 4. Events + war room | Live on app.securityexile.com (deployed 2026-10-02) | `cdac518` |
+| 5. Writeups | Built on branch `phase-5-writeups`; go-live waits for owner approval (R2 bucket, files domain, migration 0003) | see Phase 5 |
+| 6–7 | Not started | |
 
 Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
 
@@ -80,6 +81,27 @@ Spec: `docs/superpowers/specs/2026-10-02-events-war-room-design.md`; plan: `docs
 
 **Go-live (needs owner approval):** apply 0002 to the remote D1 *before* merging, optionally set the owner's `platform_role`, merge the PR, then protect `main` (require PR + CI).
 
+## Phase 5 — writeups (2026-10-03, branch `phase-5-writeups`)
+
+Spec: `docs/superpowers/specs/2026-10-02-writeups-design.md`; plan: `docs/superpowers/plans/2026-10-02-writeups.md`.
+
+**Owner decisions:** any member publishes immediately (5/day), moderators can hide; images upload to R2 and are served from `files.securityexile.com`; a writeup tied to a running event is visible only to its author and team until the event ends; upvotes only; Markdown rendered and sanitized on the server at save time.
+
+**Schema change 0003 (owner-approved, additive):** `writeups.body_html/hidden_at/vote_count/comment_count` + rank index; `comments.body_html/edited_at/hidden_at`; new `uploads` table. drizzle-kit generated it additively this time (no rebuilds). Applied locally only.
+
+**Built:**
+- Rendering (`src/lib/writeups/render.ts`): remark/rehype pipeline. Raw HTML is escaped (shown as text), images only from the files origin (others become their alt text), `rehype-sanitize` allow-list, http/https/mailto links only, external links `nofollow noopener noreferrer`, `terminal` fenced blocks with prompts, highlight.js, heading ids + table of contents. Comments use a smaller allow-list.
+- Visibility (`src/lib/writeups/visibility.ts`): one `canRead` rule and its SQL twin `listWhere`, used by every list. The lock (`spoiler_until`) follows the event end on every event edit.
+- Uploads (`POST /api/uploads`): member-only, same-origin, 20/hour, 5 MB each, 100 MB per member; type from magic bytes (PNG/JPEG/WebP/GIF); JPEG EXIF/XMP/IPTC stripped (GPS gone). In `next dev` files are served by `/dev-files`.
+- Pages: `/writeups` (trending/newest/top, category/level/tag filters, title+tag search), `/writeups/new` + edit (Write/Preview, templates, paste/drop images, local autosave, publish/unpublish/delete), `/w/[handle]/[slug]` (TOC, read time, upvote, bookmark, series prev/next, threaded comments to depth 3 with a 15-minute edit window and "[deleted]" placeholders, moderator hide), series pages, `/me/writeups`, `/me/bookmarks`, writeups on profiles and event pages.
+- Scripts: `npx tsx scripts/rerender-writeups.mjs [--remote]` (re-render after renderer changes), `node scripts/sweep-uploads.mjs [--delete] [--remote]` (orphaned images older than 7 days; dry run by default).
+
+**Verified:** 249 unit tests (incl. an XSS corpus checked structurally in a DOM, upload sniffing/EXIF strip, visibility matrix). Browser, signed in as the owner's local account: uploads (PNG/JPEG accepted, HTML-as-PNG 415, 6 MB 413, stored JPEG has no GPS and still decodes); editor flow; publish; reading page; upvote counter equals vote rows after rapid clicks; comments edit/delete/depth limit; spoiler-locked writeup absent from library, tag, search, profile, series and event pages and 404 by URL when signed out, then public everywhere once the event ends; event end change moves the lock; attack corpus on a live page runs nothing and loads no outside images; moderator hide → 404 + audit rows; phone width; no CSP violations. Worker size 3485 KiB gzip (limit 10 MiB on Workers Paid).
+
+**Fixed during the build:** a moderator-hidden event appeared in the editor's event picker (now hidden unless it's your team's).
+
+**Go-live (needs owner approval):** create R2 bucket `security-exile-uploads`, attach `files.securityexile.com` as its custom domain, add a response-header rule for that host (nosniff, `default-src 'none'`), apply 0003 to the remote D1 before merging, then merge and push.
+
 ## What Security Exile is (corrected 2026-10-02)
 
 A cybersecurity **learning community and knowledge base**: members publish and read writeups, walkthroughs and research notes; profiles track skills; teams act as study groups; the events board and war room let members practise together in external CTFs. CTFs are one activity, not the identity. Audience: students/beginners and working practitioners. The first landing copy framed it as a CTF platform; that was wrong and has been rewritten.
@@ -131,14 +153,14 @@ Raw originals live in `brand-src/` (git-ignored, large). Shipped derivatives are
 - `resolveFxLevel()` in `src/lib/fx/resolve.ts` is a placeholder policy (only honours the toggle and reduced motion). Open question for the owner: should explicit "full" beat OS reduced-motion; should low-memory devices / narrow phones default to low; should missing WebGL force low.
 - Hero stat strip shows "—" until real counts exist (Phase 2+).
 - `security.txt` and the disclosure page use placeholder domain/contact.
-- `/writeups` and `/leaderboard` show "coming soon" pages until Phases 5 and 6.
+- `/leaderboard` shows a "coming soon" page until Phase 6.
 - CSP keeps `'unsafe-inline'` for scripts until the Phase 7 nonce pass.
 - Git warns about LF→CRLF on every commit; add a `.gitattributes` (`* text=auto eol=lf`) when convenient.
 - `public/assets/Logo.png` duplicate can be removed.
 
-## Next: Phase 5 (writeups)
+## Next: Phase 6 (profiles and gamification)
 
-Markdown editor with preview, syntax highlighting, image upload to R2, terminal blocks, tags, series, spoiler lock for live events, votes, bookmarks and threaded comments. Needs an R2 bucket, which needs the owner's approval (Workers Paid is already in place). Official writeup templates (from the Guidance plan) fit here.
+Dossier profile (skill radar, badges, writeups, teams), XP and ranks, badges, seasonal leaderboards for teams and members, the Ctrl+K terminal command palette, and hidden easter-egg flags. XP for writeups and event participation lands here.
 
 ## How to run
 

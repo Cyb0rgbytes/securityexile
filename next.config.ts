@@ -17,7 +17,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${CLERK_FAPI} ${TURNSTILE}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://img.clerk.com",
+  "img-src 'self' blob: data: https://img.clerk.com https://files.securityexile.com",
   "font-src 'self'",
   `connect-src 'self'${isDev ? " ws:" : ""} ${CLERK_FAPI}`,
   `frame-src ${TURNSTILE}`,
