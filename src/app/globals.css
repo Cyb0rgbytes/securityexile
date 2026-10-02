@@ -396,3 +396,14 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- Rendered markdown (war-room notes) ---------- */
+
+.md-notes { font-size: 0.875rem; line-height: 1.6; color: var(--color-fg); overflow-wrap: anywhere; }
+.md-notes :where(p, ul, ol, pre, blockquote, table) { margin-block: 0.5rem; }
+.md-notes ul { list-style: disc; padding-left: 1.25rem; }
+.md-notes ol { list-style: decimal; padding-left: 1.25rem; }
+.md-notes a { color: var(--color-green-bright); text-decoration: underline; text-underline-offset: 3px; }
+.md-notes code { font-family: var(--font-mono); font-size: 0.8125rem; }
+.md-notes pre { overflow-x: auto; padding: 0.75rem; border: 1px solid var(--color-line); border-radius: 4px; background: var(--color-bg-deep); }
+.md-notes blockquote { border-left: 2px solid var(--color-line-strong); padding-left: 0.75rem; color: var(--color-fg-muted); }
