@@ -7,7 +7,8 @@ export const metadata: Metadata = { title: "Join the community" };
 export default function SignUpPage() {
   return (
     <AuthShell command="useradd --create-home operator">
-      <SignUp signInUrl="/sign-in" fallbackRedirectUrl="/onboarding" />
+      {/* force: every new account claims a handle before anything else */}
+      <SignUp signInUrl="/sign-in" forceRedirectUrl="/onboarding" />
     </AuthShell>
   );
 }

@@ -8,7 +8,7 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 |---|---|---|
 | 1. Scaffold, design system, layout, landing | Done | `3be428b` |
 | 1b. Rebrand around community crest + background loop, copy reframed | Done | `33cbb9a` |
-| 2. Auth + DB schema | Done — sign-up → handle → profile flow **not yet tested end to end** (see Phase 2) | this commit |
+| 2. Auth + DB schema | Done, verified end to end by the owner (first member: @darktemplar) | `7625885` + redirect fix |
 | 3. Teams + invite codes + join requests | Next | |
 | 4–7 | Not started | |
 
@@ -24,7 +24,7 @@ Runs locally with `npm run build && npm run start -- --port 3000`. Nothing is de
 
 **Verified:** typecheck, lint, 21 handle-validation tests, production build (landing and `/security` still static); signed-out `/onboarding` → sign-in redirect; unknown `/u/x` → 404; sign-in/up pages render branded, served by the linked app, with zero console errors or CSP violations; `clerk doctor` all green.
 
-**Not yet verified:** the full sign-up → claim handle → profile flow. Automated sign-up is stopped by Clerk's bot check (correctly), and the owner chose to commit first and test by hand later. Steps: open the dev server, click **join**, sign up, try `admin` as a handle (should be rejected), claim a real one, land on `/u/<handle>`; then `npx wrangler d1 execute DB --local --command "select handle from users"` should show it.
+**End-to-end test (by the owner, by hand — automated sign-up is correctly stopped by Clerk's bot check):** Google sign-up succeeded, but the first run exposed a bug: the header's sign-in button passes the current page as `redirect_url`, and when an OAuth sign-in turns into a sign-up that overrode the "go to /onboarding" fallback, so the new member landed on `/` with no handle and no `users` row. Fixed by forcing new accounts to `/onboarding` (`forceRedirectUrl` on `<SignUp>`/`<SignUpButton>`, `signUpForceRedirectUrl` on `<SignIn>`/`<SignInButton>`) and adding a safety net: `/u/me` (avatar menu → "Your dossier") resolves to your profile or, without a handle, to onboarding. Re-tested via that path: `/u/me` → `/onboarding` → handle claimed → `/u/darktemplar`; the `users` row has handle, name and avatar.
 
 **Gotchas learned**
 - Wrangler keys the *local* D1 copy by `database_id`. Changing the ID (e.g. placeholder → real) silently gives `next dev` a fresh, empty database: re-run `npm run db:migrate:local`.
