@@ -7,6 +7,9 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   // Keeps the compressed Worker under the free plan's 3 MiB limit (≈3.2 MiB unminified).
   "minify": true,
+  // Keep variables set in the dashboard (e.g. NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  // without this every deploy replaces them with the (empty) "vars" here.
+  "keep_vars": true,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
