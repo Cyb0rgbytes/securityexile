@@ -9,13 +9,14 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 | 1. Scaffold, design system, layout, landing | Done | `3be428b` |
 | 1b. Rebrand around community crest + background loop, copy reframed | Done | `33cbb9a` |
 | 2. Auth + DB schema | Done, verified end to end by the owner (first member: @darktemplar) | `7625885` + redirect fix |
-| 3. Teams + invite codes + join requests | Done; two-person code redemption still to be tried by the owner (see Phase 3) | this commit |
-| 4. Events + war room | Next | |
+| 3. Teams + invite codes + join requests | Done; two-person code redemption still to be tried by the owner (see Phase 3) | `f938c64` |
+| — Early deploy to Cloudflare Workers | Live at https://app.securityexile.com | `bd95fa6`…`0a8cb86` |
+| 4. Events + war room | Built on branch `phase-4-events`; go-live waits for owner approval | see Phase 4 |
 | 5–7 | Not started | |
 
 Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
 
-Runs locally with `npm run build && npm run start -- --port 3000`. Nothing is deployed. External resources that now exist: Cloudflare D1 `security-exile` (EU jurisdiction) and KV `security-exile` on "Omar1super@gmail.com's Account", and Clerk app `app_3K8IjbMWQcrUJGclBcRBlFMDTeu` (development instance only).
+Deployed by Cloudflare Workers Builds on every push to `main` (Worker `securityexile`, custom domain `app.securityexile.com`; `securityexile.com` 302-redirects there until a marketing site exists). Feature work now happens on branches with pull requests. External resources that now exist: Cloudflare D1 `security-exile` (EU jurisdiction) and KV `security-exile` on "Omar1super@gmail.com's Account", and Clerk app `app_3K8IjbMWQcrUJGclBcRBlFMDTeu` (development instance only).
 
 ## Phase 2 — auth + database (2026-10-02)
 
@@ -54,6 +55,30 @@ Runs locally with `npm run build && npm run start -- --port 3000`. Nothing is de
 **Fixed during testing:** the role dropdown showed the old role after saving (React form reset; fixed with `key={role}`); the glitch effect's CSS copies made screen readers read headlines three times (fixed with `content: attr(data-text) / ""`); the seed script broke on Windows shell quoting (now uses `--file`).
 
 **Not verified in the browser:** code redemption and the rate limits from a second, team-less account (needs a second real person; unit-tested). Steps for the owner: second browser profile → sign up with `you+clerk_test@example.com` (code 424242) → `/join` → paste RISE's public code from the team page → should land on `/teams/RISE`; then try a wrong code 6× to hit the limit.
+
+## Deployment notes (2026-10-02)
+
+- Workers Builds settings: build `npx opennextjs-cloudflare build`, deploy `npx opennextjs-cloudflare deploy`. The Worker name in `wrangler.jsonc` must match the dashboard (`securityexile`), or the self-reference binding breaks the deploy.
+- Runtime secrets on the Worker: `CLERK_SECRET_KEY`, `INVITE_PEPPER` (generated, never displayed; must never change once codes exist), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (stored as a secret so deploys can't drop it). The `NEXT_PUBLIC_CLERK_*` URL settings are also build variables.
+- `"keep_vars": true`: without it, each deploy replaced dashboard text variables with the (empty) `vars` in `wrangler.jsonc` and took the site down.
+- Free-plan Worker limit is 3 MiB gzipped; `"minify": true` is required. Size after Phase 4: **3030.65 KiB** (about 41 KiB headroom). Phase 5 will need trimming or Workers Paid ($5/month); ask the owner first.
+- Workers Logs are on (`observability.enabled`).
+
+## Phase 4 — events board and war room (2026-10-02, branch `phase-4-events`)
+
+Spec: `docs/superpowers/specs/2026-10-02-events-war-room-design.md`; plan: `docs/superpowers/plans/2026-10-02-events-war-room.md`.
+
+**Owner decisions:** any team's captain/co-captain adds events (3/day); the war room auto-refreshes every 10 s; every member of a registered team can use it; event kinds are CTF (registration + war room) and community (details only). After reading the owner's Guidance plan: the CTF arena is a separate product (planned `arena.securityexile.com`; events linking there get a badge). **No admin page and no bans**: platform roles (`member`/`moderator`/`admin`) exist only so moderators can hide events, and are set only by a reviewed `wrangler d1 execute --remote` command.
+
+**Schema change 0002 (owner-approved, additive):** `events.kind/description/created_by/owner_team_id/hidden_at`, `event_registrations.notes_md/notes_updated_at`, `challenges.created_by` plus a case-insensitive unique name per team per event, `users.platform_role`. Hand-written as `ALTER TABLE … ADD COLUMN`: drizzle-kit wanted to rebuild tables, which on D1 fires `ON DELETE CASCADE` and would have wiped memberships. Applied locally only.
+
+**Built:** `/events` (live/upcoming/past, kind filter, countdowns, local times), `/events/new`, `/events/[slug]` (register/withdraw, roster, edit/delete for the owner team, hide for moderators), `/events/[slug]/edit` (only end time and link after the start), `/events/[slug]/war-room` (columns open → claimed → solving → solved with tabs on phones, category filter, per-challenge Markdown notes and links, team notepad, solved/points counter, read-only 24 h after the end, 404 for anyone not on a registered team). Claims are one conditional `UPDATE … WHERE status = ?`, so two teammates can't both claim. Team notes refuse a save if a teammate saved since you opened the editor. Notes render in the browser with `marked` + DOMPurify (allow-list, http(s) links only, `rel=noopener noreferrer nofollow`); raw HTML shows as inert text/code so pasted payloads stay readable. Also: CI (typecheck, lint, tests), `CODEOWNERS`, `CONTRIBUTING.md`, Workers Logs, `scripts/seed-dev.mjs <TAG> --event`.
+
+**Bugs found and fixed:** Drizzle 0.45 wraps D1 errors, so every "already taken" check (team name/tag, handle, join request, challenge name) silently fell through to a server error; `isUniqueViolation()` now follows `error.cause`. React resets forms after an action even on error, which would have wiped notes after a refused save; those textareas are now controlled.
+
+**Verified:** 179 unit tests; typecheck/lint clean; the local migration kept all rows; the DB rejects bad roles and duplicate challenge names (any case); concurrent claims → first wins. In the browser (impersonating the owner's local account): create an event in Asia/Dubai time → stored as the correct UTC instant; register, roster, edit; add/claim/start/solve/reopen; duplicate-name message; hostile notes (`<script>`, `onerror`, `javascript:`) inert and a refused save keeps the text; teammate changes appear within ~10 s and refresh pauses while typing; stale team-notes save refused, merge works; 404 for unregistered/missing war rooms; read-only after the grace window; moderator hide removes the event for signed-out visitors (404) and logs `event.hide`; 1440 and 400 px layouts.
+
+**Go-live (needs owner approval):** apply 0002 to the remote D1 *before* merging, optionally set the owner's `platform_role`, merge the PR, then protect `main` (require PR + CI).
 
 ## What Security Exile is (corrected 2026-10-02)
 
@@ -106,14 +131,15 @@ Raw originals live in `brand-src/` (git-ignored, large). Shipped derivatives are
 - `resolveFxLevel()` in `src/lib/fx/resolve.ts` is a placeholder policy (only honours the toggle and reduced motion). Open question for the owner: should explicit "full" beat OS reduced-motion; should low-memory devices / narrow phones default to low; should missing WebGL force low.
 - Hero stat strip shows "—" until real counts exist (Phase 2+).
 - `security.txt` and the disclosure page use placeholder domain/contact.
-- Nav and button targets (`/writeups`, `/teams`, `/events`, `/leaderboard`, `/sign-in`) 404 until their phases land.
+- `/writeups` and `/leaderboard` show "coming soon" pages until Phases 5 and 6.
+- Worker size headroom is about 41 KiB on the free plan.
 - CSP keeps `'unsafe-inline'` for scripts until the Phase 7 nonce pass.
 - Git warns about LF→CRLF on every commit; add a `.gitattributes` (`* text=auto eol=lf`) when convenient.
 - `public/assets/Logo.png` duplicate can be removed.
 
-## Next: Phase 4 (events board + war room)
+## Next: Phase 5 (writeups)
 
-External CTF event board (upcoming / live / past), team registration with roster, and a private per-event war room (challenge tracker: claim → solving → solved, notes, links). Uses the existing `events`, `event_registrations` and `challenges` tables.
+Markdown editor with preview, syntax highlighting, image upload to R2, terminal blocks, tags, series, spoiler lock for live events, votes, bookmarks and threaded comments. Needs an R2 bucket (and probably Workers Paid for bundle size); both need the owner's approval. Official writeup templates (from the Guidance plan) fit here.
 
 ## How to run
 
@@ -124,5 +150,7 @@ npm run build && npm run start  # production build, local
 npm run typecheck && npm run lint
 node scripts/brand-assets.mjs   # regenerate logo derivatives
 bash scripts/encode-bg.sh       # regenerate background loops (ffmpeg)
-npm run preview                 # OpenNext build + wrangler preview (not yet exercised)
+npm run preview                 # OpenNext build + wrangler preview
+node scripts/seed-dev.mjs RISE --event   # local test data: members, requests, a live CTF
+node scripts/seed-dev.mjs --clean
 ```

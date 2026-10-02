@@ -20,7 +20,7 @@ export interface CardData {
   links: { label: string; url: string }[];
 }
 
-const LABEL: Record<Move, string> = { claim: "claim", start: "start solving", solve: "solved", release: "release", reopen: "reopen" };
+const LABEL: Record<Move, string> = { claim: "claim", start: "start solving", solve: "mark solved", release: "release", reopen: "reopen" };
 
 export function ChallengeCard({ slug, c, isLead, writable }: { slug: string; c: CardData; isLead: boolean; writable: boolean }) {
   const [pending, start] = useTransition();

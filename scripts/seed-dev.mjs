@@ -2,7 +2,8 @@
 // Seeds fake members into the LOCAL D1 database so captain screens (requests,
 // roles, kick, transfer) can be tested with a single real account.
 //
-//   node scripts/seed-dev.mjs <TEAM_TAG>     add 3 members + 2 pending requests to that team
+//   node scripts/seed-dev.mjs <TEAM_TAG>          add 3 members + 2 pending requests to that team
+//   node scripts/seed-dev.mjs <TEAM_TAG> --event  also add a live CTF the team is registered for, with 4 challenges
 //   node scripts/seed-dev.mjs --clean        remove everything this script created
 //
 // Never touches the remote database: every command runs with --local.
@@ -39,7 +40,10 @@ function d1(sql) {
 const now = Date.now();
 
 if (arg === "--clean") {
-  d1(`delete from join_requests where id like 'seed-%' or user_id like 'seed-%';
+  d1(`delete from challenges where id like 'seed-%' or event_id like 'seed-%';
+      delete from event_registrations where event_id like 'seed-%';
+      delete from events where id like 'seed-%';
+      delete from join_requests where id like 'seed-%' or user_id like 'seed-%';
       delete from team_members where user_id like 'seed-%';
       delete from users where id like 'seed-%';`);
   console.log("removed seeded members and requests");
@@ -77,6 +81,26 @@ for (const p of people.filter((p) => p.request !== undefined)) {
   const msg = p.request ? `'${p.request.replace(/'/g, "''")}'` : "null";
   d1(`insert or ignore into join_requests(id, team_id, user_id, message, status, created_at)
       values ('seed-req-${p.id}','${team.id}','${p.id}',${msg},'pending',${now});`);
+}
+
+if (process.argv.includes("--event")) {
+  const start = now - 3_600_000;
+  const end = now + 47 * 3_600_000;
+  d1(`insert or ignore into events(id, slug, title, kind, format, starts_at, ends_at, owner_team_id, created_at)
+      values ('seed-ev', 'seed-live-ctf', 'Seed Live CTF', 'ctf', 'jeopardy', ${start}, ${end}, '${team.id}', ${now});
+      insert or ignore into event_registrations(event_id, team_id, roster_json, created_at)
+      values ('seed-ev', '${team.id}', '["seed-acid","seed-cereal"]', ${now});`);
+  const chals = [
+    ["seed-ch-1", "baby-sqli", "web", 100, "open", "null"],
+    ["seed-ch-2", "ret2win", "pwn", 250, "claimed", "'seed-acid'"],
+    ["seed-ch-3", "xor-me", "crypto", 150, "solving", "'seed-cereal'"],
+    ["seed-ch-4", "strings", "rev", 50, "solved", "'seed-cereal'"],
+  ];
+  for (const [id, name, cat, pts, status, by] of chals) {
+    d1(`insert or ignore into challenges(id, event_id, team_id, name, category, points, status, claimed_by, links_json, updated_at)
+        values ('${id}', 'seed-ev', '${team.id}', '${name}', '${cat}', ${pts}, '${status}', ${by}, '[]', ${now});`);
+  }
+  console.log(`seeded a live CTF 'seed-live-ctf' with 4 challenges for ${tag}`);
 }
 
 console.log(`seeded ${tag}: 3 members (co-captain, member, reserve) + 2 pending join requests`);
