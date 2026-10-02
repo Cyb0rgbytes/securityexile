@@ -38,6 +38,8 @@ export function AuthControls() {
         <UserButton>
           <UserButton.MenuItems>
             <UserButton.Link label="Your dossier" labelIcon={<DossierIcon />} href="/u/me" />
+            <UserButton.Link label="My writeups" labelIcon={<DossierIcon />} href="/me/writeups" />
+            <UserButton.Link label="Bookmarks" labelIcon={<DossierIcon />} href="/me/bookmarks" />
           </UserButton.MenuItems>
         </UserButton>
       </Show>

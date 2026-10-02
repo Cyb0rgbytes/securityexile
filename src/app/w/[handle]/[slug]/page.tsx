@@ -2,20 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { EmblemBadge } from "@/components/teams/EmblemBadge";
 import { Countdown } from "@/components/events/Countdown";
 import { HideWriteup } from "@/components/writeups/WriteupActions";
 import { isStaff } from "@/lib/auth/platform";
 import { getDb } from "@/lib/db/client";
-import { bookmarks, events, teams, votes, writeupSeries } from "@/lib/db/schema";
+import { bookmarks, events, teams, votes, writeupSeries, writeups } from "@/lib/db/schema";
 import { requestNow } from "@/lib/events/clock";
 import { loadCommentTree } from "@/lib/writeups/comments";
 import { canVote } from "@/lib/writeups/permissions";
 import { findWriteupByHandleSlug, tagsOf } from "@/lib/writeups/queries";
 import { readMinutes, tocFromHtml } from "@/lib/writeups/render";
 import { loadWriteupViewer } from "@/lib/writeups/viewer";
-import { canRead, isLocked } from "@/lib/writeups/visibility";
+import { canRead, isLocked, listWhere } from "@/lib/writeups/visibility";
 import { Comments } from "./Comments";
 import { Social } from "./Social";
 
@@ -57,6 +57,17 @@ export default async function WriteupPage({ params }: Props) {
     loadCommentTree(db, w.id, { userId: viewer.userId, staff }, now),
   ]);
   const toc = tocFromHtml(w.bodyHtml);
+  // Neighbours in the series, filtered by the same list rule so locked parts don't leak.
+  const parts = series
+    ? await db
+        .select({ slug: writeups.slug, title: writeups.title })
+        .from(writeups)
+        .where(and(eq(writeups.seriesId, series.id), listWhere(viewer, new Date(now))))
+        .orderBy(asc(writeups.seriesOrder), asc(writeups.publishedAt))
+    : [];
+  const idx = parts.findIndex((p) => p.slug === w.slug);
+  const prev = idx > 0 ? parts[idx - 1] : null;
+  const next = idx >= 0 && idx < parts.length - 1 ? parts[idx + 1] : null;
   const locked = isLocked(w, now);
   const isAuthor = viewer.userId === w.authorId;
 
@@ -103,6 +114,12 @@ export default async function WriteupPage({ params }: Props) {
       )}
       {/* body_html was produced by renderWriteup() (escape raw HTML → gate images → rehype-sanitize). */}
       <div className="prose-se mt-8" dangerouslySetInnerHTML={{ __html: w.bodyHtml }} />
+      {(prev || next) && (
+        <nav aria-label="Series" className="mt-10 flex justify-between gap-4 font-mono text-sm">
+          {prev ? <Link href={`/w/${authorHandle}/${prev.slug}`} className="text-fg-muted hover:text-green-bright">← {prev.title}</Link> : <span />}
+          {next && <Link href={`/w/${authorHandle}/${next.slug}`} className="text-right text-fg-muted hover:text-green-bright">{next.title} →</Link>}
+        </nav>
+      )}
       <Comments writeupId={w.id} tree={tree} signedIn={!!viewer.userId} staff={staff} open={!!w.publishedAt && !w.hiddenAt} />
     </article>
   );
