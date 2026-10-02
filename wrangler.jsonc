@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "security-exile",
+  // Must match the Worker name in the Cloudflare dashboard (Workers Builds).
+  "name": "securityexile",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   // Keeps the compressed Worker under the free plan's 3 MiB limit (≈3.2 MiB unminified).
@@ -14,7 +15,7 @@
     {
       // Self-reference binding; must match "name" above.
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "security-exile"
+      "service": "securityexile"
     }
   ],
 

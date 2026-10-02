@@ -6,7 +6,7 @@ interface __BaseEnv_CloudflareEnv {
 	DB: D1Database;
 	ASSETS: Fetcher;
 	INVITE_PEPPER: string;
-	WORKER_SELF_REFERENCE: Fetcher /* security-exile */;
+	WORKER_SELF_REFERENCE: Fetcher /* securityexile */;
 }
 declare namespace Cloudflare {
 	interface Env extends __BaseEnv_CloudflareEnv {}
