@@ -19,18 +19,14 @@ Additive only. The live D1 has no events yet.
 | `events` | add `kind` text not null default `'ctf'`, CHECK in (`ctf`,`community`); `description` text (≤ 2000 chars, plain text); `created_by` → users (set null); `owner_team_id` → teams (set null); `hidden_at` timestamp |
 | `event_registrations` | add `notes_md` text (≤ 20 000 chars); `notes_updated_at` timestamp |
 | `challenges` | add `created_by` → users (set null); unique index on (`event_id`, `team_id`, lower(`name`)) |
-
-| `users` | add `platform_role` text not null default `'member'`, CHECK in (`member`,`moderator`,`admin`); `banned_at` timestamp |
+| `users` | add `platform_role` text not null default `'member'`, CHECK in (`member`,`moderator`,`admin`) |
 
 New enums in `src/lib/db/enums.ts`: `EVENT_KINDS = ["ctf", "community"]`, `PLATFORM_ROLES = ["member", "moderator", "admin"]`.
 
-## Platform roles (from the Guidance plan: users / teams / admins / moderators)
-Site-wide roles are separate from team roles.
-- **moderator:** hide / unhide any event; read the audit log. (Later phases: hide writeups and comments.)
-- **admin:** everything a moderator can do, plus assign platform roles and ban / unban members.
-- The first admin is set once by hand with a reviewed `wrangler d1 execute --remote` command (needs owner approval). After that, roles are managed in the app.
-- `requireMember()` treats a banned member as signed out and shows a "this account is suspended" page. Every server action already goes through it, so bans apply everywhere at once.
-- Phase 4 ships `/admin` with a member list (search by handle), role changes and ban / unban, each written to `audit_log`. The full admin panel (abuse monitoring, log views) is Phase 7.
+## Platform roles (narrow, no admin surface)
+Owner decision (2026-10-02): **no `/admin` page, no in-app role management, no bans.** An admin surface becomes a target, and any vulnerability elsewhere would turn into full control.
+- **moderator / admin:** the only in-app power is hiding / unhiding events (spam, fake events). Later phases may add hiding writeups and comments, each needing approval.
+- Roles are assigned **only** with a reviewed `wrangler d1 execute --remote` command, with owner approval each time. No web endpoint can change a role.
 - This replaces the `STAFF_USER_IDS` variable from the first draft.
 
 ## Arena link
@@ -114,4 +110,4 @@ Event create / edit / delete / hide, and team register / unregister / roster cha
 - CTFtime import, email reminders, real-time sync.
 - Anything the CTFd arena owns: challenge hosting, flag validation, dynamic scoring, first blood, labs and VPN.
 - Arena single sign-on and score sync.
-- The full admin panel: abuse monitoring and log views (Phase 7).
+- Any admin panel, in-app role management or bans (rejected by the owner; abuse monitoring uses Cloudflare logs and the database directly).

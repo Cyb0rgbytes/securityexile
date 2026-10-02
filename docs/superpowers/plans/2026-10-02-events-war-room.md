@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the events board (CTF + community events added by team captains), team registration with rosters, a private auto-refreshing war room per registered team, platform roles (moderator/admin) with a small `/admin` page and bans, plus CI, contributor docs and Workers Logs.
+**Goal:** Ship the events board (CTF + community events added by team captains), team registration with rosters, a private auto-refreshing war room per registered team, narrow platform roles (moderators/admins can only hide events; roles set by reviewed CLI command, no admin page, no bans), plus CI, contributor docs and Workers Logs.
 
 **Architecture:** Server components read through query helpers in `src/lib/events/*`; every mutation is a server action that runs `requireMember → load rows → pure permission check → Zod → write (+ audit row in the same db.batch) → revalidatePath`, the same pattern as `src/app/teams/actions.ts`. Pure logic (timing, permissions, challenge transitions, validation) lives in small files with Vitest tests. The war room refreshes with `router.refresh()` every 10 s; correctness under races comes from conditional `UPDATE … WHERE status = ?` statements, not from the client.
 
@@ -50,12 +50,10 @@
 | `drizzle/migrations/0002_*.sql` | hand-checked additive migration |
 | `src/lib/events/timing.ts` (+test) | phase, writable, registration window, countdown text |
 | `src/lib/events/permissions.ts` (+test) | `canEvent`, `deleteAllowed`, challenge `nextStatus` |
-| `src/lib/auth/platform.ts` (+test) | `PlatformRole`, `isStaff`, `canAdmin` |
+| `src/lib/auth/platform.ts` (+test) | `PlatformRole`, `isStaff` |
 | `src/lib/events/validation.ts` (+test) | Zod schemas, `slugify`, `parseInstant`, `parseLinks` |
 | `src/lib/security/rate-limit.ts` | + 3 limits |
-| `src/lib/teams/audit.ts` | + event/admin audit actions and descriptions |
-| `src/lib/auth/member.ts` | ban check in `requireMember` |
-| `src/app/suspended/page.tsx` | suspended-account page |
+| `src/lib/teams/audit.ts` | + event audit actions and descriptions |
 | `src/lib/events/queries.ts` | event / registration / challenge reads |
 | `src/lib/events/context.ts` | load event + viewer's team/role/platform role |
 | `src/app/events/actions.ts` | event + registration actions |
@@ -64,7 +62,6 @@
 | `src/app/events/[slug]/war-room/actions.ts` | challenge + notes actions |
 | `src/components/markdown/*` | `sanitize.ts` (+test), `MarkdownView.tsx` |
 | `src/app/events/[slug]/war-room/page.tsx` + `Board.tsx`, `ChallengeCard.tsx`, `NotesPanel.tsx`, `AutoRefresh.tsx`, `AddChallenge.tsx` | war room UI |
-| `src/app/admin/page.tsx`, `actions.ts`, `AdminRow.tsx` | admin page |
 | `scripts/seed-dev.mjs` | + `--event` seeding |
 | `docs/PROGRESS.md` | Phase 4 section |
 
@@ -183,7 +180,7 @@ git commit -m "chore: CI, CODEOWNERS, contributing guide, Workers Logs"
 - Create: `drizzle/migrations/0002_<generated>.sql` (+ meta snapshot/journal from drizzle-kit)
 
 **Interfaces:**
-- Produces: `EVENT_KINDS = ["ctf","community"]`, `PLATFORM_ROLES = ["member","moderator","admin"]`; columns `users.platformRole`, `users.bannedAt`, `events.kind|description|createdBy|ownerTeamId|hiddenAt`, `eventRegistrations.notesMd|notesUpdatedAt`, `challenges.createdBy`; unique index `challenges_name_uq`.
+- Produces: `EVENT_KINDS = ["ctf","community"]`, `PLATFORM_ROLES = ["member","moderator","admin"]`; columns `users.platformRole`, `events.kind|description|createdBy|ownerTeamId|hiddenAt`, `eventRegistrations.notesMd|notesUpdatedAt`, `challenges.createdBy`; unique index `challenges_name_uq`.
 
 - [ ] **Step 1: Enums** — append to `src/lib/db/enums.ts`:
 
@@ -197,8 +194,6 @@ export const PLATFORM_ROLES = ["member", "moderator", "admin"] as const;
   - `users`: add after `skills`:
 ```ts
     platformRole: text("platform_role", { enum: PLATFORM_ROLES }).notNull().default("member"),
-    /** set when an admin suspends the account; requireMember() blocks banned members */
-    bannedAt: integer("banned_at", { mode: "timestamp_ms" }),
 ```
    and to its checks array: `check("users_platform_role_ck", oneOf(t.platformRole, PLATFORM_ROLES)),`
   - `events`: add after `weight`:
@@ -228,7 +223,6 @@ Run: `npm run db:generate`. Open the new `drizzle/migrations/0002_*.sql`. drizzl
 
 ```sql
 ALTER TABLE `users` ADD `platform_role` text DEFAULT 'member' NOT NULL CHECK (`platform_role` in ('member','moderator','admin'));--> statement-breakpoint
-ALTER TABLE `users` ADD `banned_at` integer;--> statement-breakpoint
 ALTER TABLE `events` ADD `kind` text DEFAULT 'ctf' NOT NULL CHECK (`kind` in ('ctf','community'));--> statement-breakpoint
 ALTER TABLE `events` ADD `description` text;--> statement-breakpoint
 ALTER TABLE `events` ADD `created_by` text REFERENCES users(id) ON DELETE set null;--> statement-breakpoint
@@ -261,7 +255,7 @@ Expected: counts identical before/after; the last insert fails with `CHECK const
 Run: `npm run typecheck && npm test` → pass.
 ```bash
 git add src/lib/db drizzle/migrations
-git commit -m "feat(db): migration 0002 — event kinds/owners, notes, platform roles, bans"
+git commit -m "feat(db): migration 0002 — event kinds/owners, notes, platform roles"
 ```
 
 ---
@@ -557,8 +551,6 @@ Check `FOCUS_CATEGORIES` is declared `as const` in `src/lib/teams/validation.ts`
 // src/lib/auth/platform.ts
 export type PlatformRole = "member" | "moderator" | "admin";
 export function isStaff(r: PlatformRole | null | undefined): boolean;
-export type AdminAction = "role.assign" | "member.ban";
-export function canAdmin(actor: { id: string; role: PlatformRole }, action: AdminAction, target: { id: string; role: PlatformRole }): boolean;
 
 // src/lib/events/permissions.ts
 export type EventAction = "event.create" | "event.edit" | "event.delete" | "event.hide" | "event.register" | "event.roster";
@@ -575,9 +567,8 @@ export function nextStatus(from: ChallengeStatus, move: Move, ctx: { isClaimer: 
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { canAdmin, isStaff } from "./platform";
+import { isStaff } from "./platform";
 
-const admin = { id: "a", role: "admin" as const };
 describe("isStaff", () => {
   it("covers moderator and admin", () => {
     expect(isStaff("moderator")).toBe(true);
@@ -585,18 +576,6 @@ describe("isStaff", () => {
     expect(isStaff("member")).toBe(false);
     expect(isStaff(null)).toBe(false);
   });
-});
-describe("canAdmin", () => {
-  it("lets admins manage members and moderators", () => {
-    expect(canAdmin(admin, "role.assign", { id: "b", role: "member" })).toBe(true);
-    expect(canAdmin(admin, "member.ban", { id: "b", role: "moderator" })).toBe(true);
-  });
-  it("never acts on yourself", () => {
-    expect(canAdmin(admin, "role.assign", { id: "a", role: "admin" })).toBe(false);
-    expect(canAdmin(admin, "member.ban", { id: "a", role: "admin" })).toBe(false);
-  });
-  it("can't ban another admin (demote first)", () => expect(canAdmin(admin, "member.ban", { id: "b", role: "admin" })).toBe(false));
-  it("moderators can't administer", () => expect(canAdmin({ id: "m", role: "moderator" }, "role.assign", { id: "b", role: "member" })).toBe(false));
 });
 ```
 
@@ -681,15 +660,6 @@ export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 export function isStaff(r: PlatformRole | null | undefined): boolean {
   return r === "moderator" || r === "admin";
 }
-
-export type AdminAction = "role.assign" | "member.ban";
-
-/** Admins manage everyone but themselves; another admin must be demoted before a ban. */
-export function canAdmin(actor: { id: string; role: PlatformRole }, action: AdminAction, target: { id: string; role: PlatformRole }): boolean {
-  if (actor.role !== "admin" || actor.id === target.id) return false;
-  if (action === "member.ban") return target.role !== "admin";
-  return true;
-}
 ```
 
 `src/lib/events/permissions.ts`
@@ -761,15 +731,14 @@ export function nextStatus(from: ChallengeStatus, move: Move, ctx: { isClaimer: 
 
 ---
 
-### Task 6: Bans, rate limits, audit actions
+### Task 6: Rate limits, audit actions
 
 **Files:**
-- Modify: `src/lib/auth/member.ts`, `src/lib/security/rate-limit.ts`, `src/lib/teams/audit.ts`
-- Create: `src/app/suspended/page.tsx`
+- Modify: `src/lib/security/rate-limit.ts`, `src/lib/teams/audit.ts`
 - Test: `src/lib/security/rate-limit.test.ts` (extend)
 
 **Interfaces:**
-- Produces: `LIMITS.eventCreate | challengeCreate | warRoomWrite`; `AuditAction` gains `"event.create" | "event.update" | "event.delete" | "event.hide" | "event.unhide" | "event.register" | "event.unregister" | "event.roster" | "admin.set_role" | "admin.ban" | "admin.unban"`; `requireMember()` redirects banned members to `/suspended`.
+- Produces: `LIMITS.eventCreate | challengeCreate | warRoomWrite`; `AuditAction` gains `"event.create" | "event.update" | "event.delete" | "event.hide" | "event.unhide" | "event.register" | "event.unregister" | "event.roster"`.
 
 - [ ] **Step 1: Failing test** — append to `src/lib/security/rate-limit.test.ts`:
 
@@ -794,7 +763,7 @@ Run: `npx vitest run src/lib/security/rate-limit.test.ts` → FAIL.
 ```
 Run the test → PASS.
 
-- [ ] **Step 3: Audit actions** — in `src/lib/teams/audit.ts`, extend the `AuditAction` union with the 11 actions above and add cases to `describeAudit` before `default`:
+- [ ] **Step 3: Audit actions** — in `src/lib/teams/audit.ts`, extend the `AuditAction` union with the 8 actions above and add cases to `describeAudit` before `default`:
 
 ```ts
     case "event.create": return `${who} added the event ${m.title ?? ""}`.trim();
@@ -805,53 +774,14 @@ Run the test → PASS.
     case "event.register": return `${who} registered the team for ${m.title ?? "an event"}`;
     case "event.unregister": return `${who} withdrew the team from ${m.title ?? "an event"}`;
     case "event.roster": return `${who} updated the roster for ${m.title ?? "an event"}`;
-    case "admin.set_role": return `${who} made ${target} ${String(m.role ?? "")}`;
-    case "admin.ban": return `${who} suspended ${target}`;
-    case "admin.unban": return `${who} lifted ${target}'s suspension`;
 ```
 
-- [ ] **Step 4: Ban check** — in `requireMember()` in `src/lib/auth/member.ts`, after the `!member` redirect:
-
-```ts
-  if (member.bannedAt) redirect("/suspended");
-```
-
-- [ ] **Step 5: Suspended page** — `src/app/suspended/page.tsx`
-
-```tsx
-import type { Metadata } from "next";
-import { SignOutButton } from "@clerk/nextjs";
-import { CursorHeading } from "@/components/fx/CursorHeading";
-import { GlassPanel } from "@/components/ui/GlassPanel";
-
-export const metadata: Metadata = { title: "Account suspended", robots: { index: false } };
-
-export default function SuspendedPage() {
-  return (
-    <article className="mx-auto max-w-2xl px-4 pt-16 sm:px-6">
-      <CursorHeading level={1} prompt="#">
-        account suspended
-      </CursorHeading>
-      <GlassPanel className="mt-8 space-y-3 p-6 text-sm text-fg-muted">
-        <p>A moderator suspended this account, so you can&apos;t post, join teams or use war rooms.</p>
-        <p>If you think this is a mistake, contact the moderators on the community Discord.</p>
-        <SignOutButton>
-          <button type="button" className="rounded border border-line-strong px-4 py-2 font-mono text-sm text-fg hover:border-green-bright">
-            sign out
-          </button>
-        </SignOutButton>
-      </GlassPanel>
-    </article>
-  );
-}
-```
-
-- [ ] **Step 6: Verify + commit**
+- [ ] **Step 4: Verify + commit**
 
 Run: `npm run typecheck && npm run lint && npm test` → pass.
 ```bash
-git add src/lib src/app/suspended
-git commit -m "feat: account suspension, Phase 4 rate limits and audit actions"
+git add src/lib
+git commit -m "feat: Phase 4 rate limits and audit actions"
 ```
 
 ---
@@ -959,10 +889,10 @@ export interface EventViewer {
   staff: boolean;
 }
 
-/** Who is looking: optional sign-in for public pages. Banned members are treated as signed out. */
+/** Who is looking: optional sign-in for public pages. */
 export async function loadViewer(db: Db): Promise<EventViewer> {
   const m = await getMember();
-  if (!m || !m.handle || m.bannedAt) return { member: null, team: null, teamRole: null, staff: false };
+  if (!m || !m.handle) return { member: null, team: null, teamRole: null, staff: false };
   const membership = await findMembershipOf(db, m.id);
   return { member: m as OnboardedMember, team: membership?.team ?? null, teamRole: membership?.role ?? null, staff: isStaff(m.platformRole) };
 }
@@ -1015,7 +945,7 @@ function revalidateEvent(slug: string) {
   revalidatePath(`/events/${slug}`);
 }
 
-/** Viewer from requireMember (actions always need a signed-in, non-banned member). */
+/** Viewer from requireMember (actions always need a signed-in, onboarded member). */
 async function actingViewer() {
   const member = await requireMember();
   const db = getDb();
@@ -2503,214 +2433,7 @@ git commit -m "feat(war-room): board, challenge cards, team notes, auto-refresh"
 
 ---
 
-### Task 11: Admin page
-
-**Files:**
-- Create: `src/app/admin/page.tsx`, `src/app/admin/actions.ts`, `src/app/admin/AdminRow.tsx`
-- Modify: `src/lib/events/queries.ts` (+ `listRecentAudit`), `src/lib/validation/handle.ts` only if `admin` isn't already reserved (it is listed in RESERVED_HANDLES? check; add `"admin"` if missing)
-
-**Interfaces:**
-- Produces: `setPlatformRole(userId, _prev, form)`, `setBanned(userId, banned: boolean)` → `ActionState`; route `/admin` (moderators: audit view; admins: + member management).
-
-- [ ] **Step 1: Audit query** — append to `src/lib/events/queries.ts`:
-
-```ts
-import { auditLog } from "@/lib/db/schema"; // merge into the existing schema import
-import { like } from "drizzle-orm";          // merge into the existing drizzle import
-
-/** Site-wide events and admin actions for moderators. */
-export async function listRecentAudit(db: Db) {
-  return db
-    .select({ id: auditLog.id, action: auditLog.action, meta: auditLog.meta, createdAt: auditLog.createdAt, actor: users.handle })
-    .from(auditLog)
-    .leftJoin(users, eq(users.id, auditLog.actorId))
-    .where(or(like(auditLog.action, "event.%"), like(auditLog.action, "admin.%")))
-    .orderBy(desc(auditLog.createdAt))
-    .limit(100);
-}
-```
-(`or` must be in the drizzle import.)
-
-- [ ] **Step 2: Actions** — `src/app/admin/actions.ts`
-
-```ts
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
-import { requireMember } from "@/lib/auth/member";
-import { canAdmin } from "@/lib/auth/platform";
-import { getDb } from "@/lib/db/client";
-import { PLATFORM_ROLES } from "@/lib/db/enums";
-import { auditLog, users } from "@/lib/db/schema";
-import { auditEntry } from "@/lib/teams/audit";
-import type { ActionState } from "@/app/teams/actions";
-
-const idSchema = z.string().regex(/^[0-9A-Z]{26}$/);
-
-async function authorize(userIdRaw: string, action: "role.assign" | "member.ban") {
-  const actor = await requireMember();
-  const id = idSchema.safeParse(userIdRaw);
-  if (!id.success) return { error: "Member not found." } as const;
-  const db = getDb();
-  const target = await db.query.users.findFirst({ where: eq(users.id, id.data) });
-  if (!target) return { error: "Member not found." } as const;
-  if (!canAdmin({ id: actor.id, role: actor.platformRole }, action, { id: target.id, role: target.platformRole }))
-    return { error: "You don't have permission to do that." } as const;
-  return { db, actor, target } as const;
-}
-
-export async function setPlatformRole(userId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
-  const ctx = await authorize(userId, "role.assign");
-  if ("error" in ctx) return { error: ctx.error };
-  const role = z.enum(PLATFORM_ROLES).safeParse(form.get("role"));
-  if (!role.success) return { error: "Pick a role." };
-  const { db, actor, target } = ctx;
-  await db.batch([
-    db.update(users).set({ platformRole: role.data }).where(eq(users.id, target.id)),
-    db.insert(auditLog).values(auditEntry({ teamId: null, actorId: actor.id, action: "admin.set_role", targetId: target.id, meta: { target: target.handle, role: role.data } })),
-  ]);
-  revalidatePath("/admin");
-  return { ok: `@${target.handle ?? "member"} is now ${role.data}.` };
-}
-
-export async function setBanned(userId: string, banned: boolean): Promise<ActionState> {
-  const ctx = await authorize(userId, "member.ban");
-  if ("error" in ctx) return { error: ctx.error };
-  const { db, actor, target } = ctx;
-  await db.batch([
-    db.update(users).set({ bannedAt: banned ? new Date() : null }).where(eq(users.id, target.id)),
-    db.insert(auditLog).values(auditEntry({ teamId: null, actorId: actor.id, action: banned ? "admin.ban" : "admin.unban", targetId: target.id, meta: { target: target.handle } })),
-  ]);
-  revalidatePath("/admin");
-  return { ok: banned ? `@${target.handle} is suspended.` : `@${target.handle} can use the site again.` };
-}
-```
-
-- [ ] **Step 3: Row UI** — `src/app/admin/AdminRow.tsx`
-
-```tsx
-"use client";
-
-import { useActionState } from "react";
-import type { ActionState } from "@/app/teams/actions";
-import { FormMessage, SubmitButton } from "@/components/teams/FormBits";
-import type { PlatformRole } from "@/lib/auth/platform";
-import { setBanned, setPlatformRole } from "./actions";
-
-export function AdminRow({ id, handle, role, banned, isSelf }: { id: string; handle: string | null; role: PlatformRole; banned: boolean; isSelf: boolean }) {
-  const [roleState, roleAction] = useActionState<ActionState, FormData>(setPlatformRole.bind(null, id), {});
-  const [banState, banAction] = useActionState<ActionState, FormData>(() => setBanned(id, !banned), {});
-  return (
-    <li className="flex flex-wrap items-center gap-3 border-b border-line py-2">
-      <span className="font-mono text-sm text-fg">@{handle ?? "(no handle)"}</span>
-      {banned && <span className="font-mono text-xs text-red-bright">suspended</span>}
-      {isSelf ? (
-        <span className="ml-auto font-mono text-xs text-fg-muted">{role} (you)</span>
-      ) : (
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <form key={role} action={roleAction} className="flex items-center gap-2">
-            <label htmlFor={`pr-${id}`} className="sr-only">Role for @{handle}</label>
-            <select id={`pr-${id}`} name="role" defaultValue={role} className="rounded border border-line-strong bg-bg-deep px-2 py-1 font-mono text-xs text-fg">
-              <option value="member">member</option>
-              <option value="moderator">moderator</option>
-              <option value="admin">admin</option>
-            </select>
-            <SubmitButton variant="ghost" className="!px-2 !py-1 !text-xs" pending="…">set</SubmitButton>
-          </form>
-          {role !== "admin" && (
-            <form action={banAction}>
-              <SubmitButton variant={banned ? "ghost" : "danger"} className="!px-2 !py-1 !text-xs" pending="…">{banned ? "lift suspension" : "suspend"}</SubmitButton>
-            </form>
-          )}
-        </div>
-      )}
-      <div className="w-full"><FormMessage state={roleState} /><FormMessage state={banState} /></div>
-    </li>
-  );
-}
-```
-
-- [ ] **Step 4: Page** — `src/app/admin/page.tsx`
-
-```tsx
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { asc, like } from "drizzle-orm";
-import { CursorHeading } from "@/components/fx/CursorHeading";
-import { GlassPanel } from "@/components/ui/GlassPanel";
-import { inputCls } from "@/components/teams/FormBits";
-import { requireMember } from "@/lib/auth/member";
-import { isStaff } from "@/lib/auth/platform";
-import { getDb } from "@/lib/db/client";
-import { users } from "@/lib/db/schema";
-import { listRecentAudit } from "@/lib/events/queries";
-import { describeAudit } from "@/lib/teams/audit";
-import { AdminRow } from "./AdminRow";
-
-export const metadata: Metadata = { title: "Admin", robots: { index: false } };
-
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await connection();
-  const me = await requireMember();
-  if (!isStaff(me.platformRole)) notFound();
-  const { q = "" } = await searchParams;
-  const db = getDb();
-  const term = q.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
-  const [people, audit] = await Promise.all([
-    me.platformRole === "admin"
-      ? db.query.users.findMany({ where: term ? like(users.handle, `%${term}%`) : undefined, orderBy: asc(users.handle), limit: 50 })
-      : Promise.resolve([]),
-    listRecentAudit(db),
-  ]);
-  return (
-    <section className="mx-auto max-w-4xl px-4 pt-16 sm:px-6">
-      <CursorHeading level={1} prompt="#">admin</CursorHeading>
-      {me.platformRole === "admin" && (
-        <GlassPanel className="mt-8 p-6">
-          <h2 className="font-mono text-green">members</h2>
-          <form className="mt-3" role="search">
-            <label htmlFor="q" className="sr-only">Search by handle</label>
-            <input id="q" name="q" defaultValue={term} placeholder="search handles" className={inputCls} />
-          </form>
-          <ul className="mt-4">
-            {people.map((u) => (
-              <AdminRow key={u.id} id={u.id} handle={u.handle} role={u.platformRole} banned={!!u.bannedAt} isSelf={u.id === me.id} />
-            ))}
-          </ul>
-        </GlassPanel>
-      )}
-      <GlassPanel className="mt-8 p-6">
-        <h2 className="font-mono text-green">recent moderation and event activity</h2>
-        <ul className="mt-3 space-y-1 text-sm text-fg-muted">
-          {audit.map((a) => (
-            <li key={a.id}>
-              <time dateTime={a.createdAt.toISOString()} className="font-mono text-xs">{a.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC</time>{" "}
-              {describeAudit(a.action, a.actor, a.meta)}
-            </li>
-          ))}
-          {audit.length === 0 && <li>Nothing yet.</li>}
-        </ul>
-      </GlassPanel>
-    </section>
-  );
-}
-```
-Also protect the route in `src/proxy.ts`: add `"/admin(.*)"` to the protected-route matcher list alongside `/onboarding(.*)` and `/settings(.*)`.
-
-- [ ] **Step 5: Verify + commit**
-
-`npm run typecheck && npm run lint && npm test`. Locally make yourself admin: `npx wrangler d1 execute DB --local --command "update users set platform_role='admin' where handle='darktemplar'"` (local only). Visit `/admin`: list shows; changing a seeded member to moderator works; suspending a seeded member, then impersonating them, lands on `/suspended`. Non-staff → 404.
-```bash
-git add src/app/admin src/lib/events/queries.ts src/proxy.ts
-git commit -m "feat(admin): platform roles and suspensions with audit trail"
-```
-
----
-
-### Task 12: Seed, full browser pass, size check, docs, PR
+### Task 11: Seed, full browser pass, size check, docs, PR
 
 **Files:**
 - Modify: `scripts/seed-dev.mjs`, `docs/PROGRESS.md`
@@ -2744,12 +2467,12 @@ Extend `--clean` to also run: `delete from challenges where id like 'seed-%'; de
   5. Notes containing `<script>alert(1)</script>`, `[x](javascript:alert(1))` and `[ok](https://example.com)` → no script runs, the javascript link has no href, the example link opens in a new tab (Review Focus 4).
   6. As a non-member (impersonate a user without a team, or sign out), `/events/seed-live-ctf/war-room` → 404.
   7. Make the event ended > 24 h ago via SQL (`update events set ends_at = <now - 25h>, starts_at = <now - 30h> where id='seed-ev'`) → read-only banner, no buttons, no auto-refresh.
-  8. Hide the event as admin → gone from the board for a plain member, visible with "hidden" for admin.
+  8. Make yourself moderator locally (`npx wrangler d1 execute DB --local --command "update users set platform_role='moderator' where handle='<you>'"`), hide the event → gone from the board for a plain member, visible with "hidden" for you.
   9. Screenshots at 1440 and 400 px; no console errors or CSP violations; low-FX unaffected.
 
 - [ ] **Step 3: Worker size** — `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run --outdir "$TEMP/se-dry"` → note `gzip:`; must be ≤ 3072 KiB. If over: stop and report to the owner with the number (options: trim, or Workers Paid).
 
-- [ ] **Step 4: PROGRESS.md** — add a "Phase 4 — events & war room" section (what shipped, decisions: captains add events, auto-refresh, whole-team war room, CTF + community kinds, platform roles; gotchas: hand-written additive migration because drizzle-kit rebuilds tables, DOMPurify browser-only; owner actions pending: apply 0002 remote, first admin, branch protection). Update "Next" to Phase 5.
+- [ ] **Step 4: PROGRESS.md** — add a "Phase 4 — events & war room" section (what shipped, decisions: captains add events, auto-refresh, whole-team war room, CTF + community kinds, platform roles limited to hiding events, no admin page or bans by owner decision; gotchas: hand-written additive migration because drizzle-kit rebuilds tables, DOMPurify browser-only; owner actions pending: apply 0002 remote, owner's moderator role, branch protection). Update "Next" to Phase 5.
 
 - [ ] **Step 5: Final checks + commit + push branch**
 
@@ -2763,9 +2486,9 @@ Pushing a non-`main` branch makes Cloudflare build a preview version only (produ
 
 ---
 
-### Task 13: Go-live (owner approval required — do not run without an explicit yes in chat)
+### Task 12: Go-live (owner approval required — do not run without an explicit yes in chat)
 
-- [ ] **Step 1: Ask the owner** to approve, in one message: (a) applying migration 0002 to the live D1, (b) making their account the first admin, (c) merging the PR (which deploys). Show the exact commands below.
+- [ ] **Step 1: Ask the owner** to approve, in one message: (a) applying migration 0002 to the live D1, (b) giving their account the `admin` platform role (its only power: hide/unhide events), (c) merging the PR (which deploys). Show the exact commands below.
 
 - [ ] **Step 2: Remote migration (after yes)**
 
@@ -2776,13 +2499,13 @@ npx wrangler d1 execute DB --remote --command "select (select count(*) from user
 ```
 Counts must match before/after. Apply the migration **before** merging, so the new code never runs against the old schema.
 
-- [ ] **Step 3: First admin (after yes)** — the owner tells you their live handle:
+- [ ] **Step 3: Owner's platform role (after yes)** — the owner tells you their live handle:
 
 ```bash
 npx wrangler d1 execute DB --remote --command "update users set platform_role='admin' where handle='<HANDLE>'"
 npx wrangler d1 execute DB --remote --command "select handle, platform_role from users where platform_role != 'member'"
 ```
 
-- [ ] **Step 4: Owner merges the PR**, then verify production: `/events`, `/admin` load (200), `wrangler tail` shows no errors for a page load, and Workers Logs appear in the dashboard.
+- [ ] **Step 4: Owner merges the PR**, then verify production: `/events` and an event page load (200), `wrangler tail` shows no errors for a page load, and Workers Logs appear in the dashboard.
 
 - [ ] **Step 5: Owner sets branch protection** on `main`: GitHub → Settings → Branches → Add rule for `main`: require a pull request, require status check `CI / check`.
