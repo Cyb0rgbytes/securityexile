@@ -20,7 +20,21 @@ Additive only. The live D1 has no events yet.
 | `event_registrations` | add `notes_md` text (≤ 20 000 chars); `notes_updated_at` timestamp |
 | `challenges` | add `created_by` → users (set null); unique index on (`event_id`, `team_id`, lower(`name`)) |
 
-New enum `EVENT_KINDS = ["ctf", "community"]` in `src/lib/db/enums.ts`.
+| `users` | add `platform_role` text not null default `'member'`, CHECK in (`member`,`moderator`,`admin`); `banned_at` timestamp |
+
+New enums in `src/lib/db/enums.ts`: `EVENT_KINDS = ["ctf", "community"]`, `PLATFORM_ROLES = ["member", "moderator", "admin"]`.
+
+## Platform roles (from the Guidance plan: users / teams / admins / moderators)
+Site-wide roles are separate from team roles.
+- **moderator:** hide / unhide any event; read the audit log. (Later phases: hide writeups and comments.)
+- **admin:** everything a moderator can do, plus assign platform roles and ban / unban members.
+- The first admin is set once by hand with a reviewed `wrangler d1 execute --remote` command (needs owner approval). After that, roles are managed in the app.
+- `requireMember()` treats a banned member as signed out and shows a "this account is suspended" page. Every server action already goes through it, so bans apply everywhere at once.
+- Phase 4 ships `/admin` with a member list (search by handle), role changes and ban / unban, each written to `audit_log`. The full admin panel (abuse monitoring, log views) is Phase 7.
+- This replaces the `STAFF_USER_IDS` variable from the first draft.
+
+## Arena link
+The CTFd arena is a separate product on its own subdomain (planned: `arena.securityexile.com`). Events whose `url` points to that host show a "Security Exile Arena" badge; this is derived from the URL, with no extra column. Single sign-on and pulling arena scores back are future work.
 
 ## Timing (pure functions, `src/lib/events/timing.ts`)
 - `phase(event, now)`: `upcoming` if now < starts_at, `live` if starts_at ≤ now < ends_at, otherwise `past`.
@@ -34,14 +48,14 @@ New enum `EVENT_KINDS = ["ctf", "community"]` in `src/lib/db/enums.ts`.
 | Create event | captain / co-captain of any team; rate limit 3/day per member |
 | Edit event | captain / co-captain of `owner_team_id`. Before start: all fields. After start: only `ends_at` (later only) and `url`. |
 | Delete event | owner team captain / co-captain, only before start and with no other team registered |
-| Hide / unhide event | staff: user ids listed in the `STAFF_USER_IDS` Worker variable (comma-separated) |
+| Hide / unhide event | moderator or admin |
 | Register / unregister team | captain / co-captain, while `registrationOpen` |
 | Set roster | captain / co-captain; roster ⊆ current team members |
 | View war room | any member of a registered team; everyone else gets 404 |
 | Add / edit / claim / move / delete challenge, edit notes | any member of that team, while `warRoomWritable` |
 | Release someone else's claim | captain / co-captain; members can release only their own |
 
-Hidden events are excluded from the board and return 404 except to staff and the owner team.
+Hidden events are excluded from the board and return 404 except to moderators, admins and the owner team.
 
 ## Challenge state machine
 `open → claimed → solving → solved`, plus `release` (claimed/solving → open) and `reopen` (solved → open).
@@ -82,6 +96,12 @@ Notes render with `marked`, are sanitized with DOMPurify (isomorphic, server-sid
 ## Audit
 Event create / edit / delete / hide, and team register / unregister / roster changes, write `audit_log` rows. Challenge moves are not audited; they're high-volume and team-private.
 
+## Engineering workflow (from the Guidance plan)
+- **CI:** a GitHub Actions workflow runs typecheck, lint, tests and the OpenNext build on every push and pull request.
+- **Branches:** pushing to `main` deploys to production, so work goes on a branch with a pull request. Cloudflare Workers Builds turns non-`main` branches into preview versions with their own URL. Owner action: protect `main` in GitHub (require a PR and passing CI).
+- **Contributors:** add `CONTRIBUTING.md` (setup, branch / PR flow, security rules, never commit secrets) and `CODEOWNERS` so the owner reviews every change. This follows the plan's "keep contributors small and vetted".
+- **Observability:** turn on Workers Logs (`"observability": { "enabled": true }` in `wrangler.jsonc`, included in the free plan) so errors can be read in the dashboard without `wrangler tail`.
+
 ## Testing
 - Vitest: timing, permissions matrix, challenge transitions, Zod schemas, slug generation.
 - DB check: concurrent claims → exactly one succeeds; unique challenge name per team per event.
@@ -89,4 +109,9 @@ Event create / edit / delete / hide, and team register / unregister / roster cha
 - Measure Worker gzip size; stop and ask if it exceeds 3 MiB.
 
 ## Out of scope
-Writeups and spoiler lock (Phase 5), XP for solves (Phase 6), CTFtime import, email reminders, real-time sync, event moderation UI beyond the staff hide.
+- Writeups and spoiler lock (Phase 5). The Guidance plan adds official writeup templates, as Hack The Box publishes; noted for Phase 5.
+- XP for solves (Phase 6).
+- CTFtime import, email reminders, real-time sync.
+- Anything the CTFd arena owns: challenge hosting, flag validation, dynamic scoring, first blood, labs and VPN.
+- Arena single sign-on and score sync.
+- The full admin panel: abuse monitoring and log views (Phase 7).
