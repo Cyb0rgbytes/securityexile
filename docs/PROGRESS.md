@@ -11,7 +11,7 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 | 2. Auth + DB schema | Done, verified end to end by the owner (first member: @darktemplar) | `7625885` + redirect fix |
 | 3. Teams + invite codes + join requests | Done; two-person code redemption still to be tried by the owner (see Phase 3) | `f938c64` |
 | — Early deploy to Cloudflare Workers | Live at https://app.securityexile.com | `bd95fa6`…`0a8cb86` |
-| 4. Events + war room | Built on branch `phase-4-events`; go-live waits for owner approval | see Phase 4 |
+| 4. Events + war room | Merged to local `main` (`cdac518`), not pushed; go-live waits for owner approval | see Phase 4 |
 | 5–7 | Not started | |
 
 Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
@@ -61,7 +61,7 @@ Deployed by Cloudflare Workers Builds on every push to `main` (Worker `securitye
 - Workers Builds settings: build `npx opennextjs-cloudflare build`, deploy `npx opennextjs-cloudflare deploy`. The Worker name in `wrangler.jsonc` must match the dashboard (`securityexile`), or the self-reference binding breaks the deploy.
 - Runtime secrets on the Worker: `CLERK_SECRET_KEY`, `INVITE_PEPPER` (generated, never displayed; must never change once codes exist), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (stored as a secret so deploys can't drop it). The `NEXT_PUBLIC_CLERK_*` URL settings are also build variables.
 - `"keep_vars": true`: without it, each deploy replaced dashboard text variables with the (empty) `vars` in `wrangler.jsonc` and took the site down.
-- Free-plan Worker limit is 3 MiB gzipped; `"minify": true` is required. Size after Phase 4: **3030.65 KiB** (about 41 KiB headroom). Phase 5 will need trimming or Workers Paid ($5/month); ask the owner first.
+- The owner is on **Workers Paid** ($5/month), so the Worker limit is 10 MiB gzipped. Size after Phase 4: **3032.62 KiB**. `"minify": true` stays on (smaller cold starts).
 - Workers Logs are on (`observability.enabled`).
 
 ## Phase 4 — events board and war room (2026-10-02, branch `phase-4-events`)
@@ -132,14 +132,13 @@ Raw originals live in `brand-src/` (git-ignored, large). Shipped derivatives are
 - Hero stat strip shows "—" until real counts exist (Phase 2+).
 - `security.txt` and the disclosure page use placeholder domain/contact.
 - `/writeups` and `/leaderboard` show "coming soon" pages until Phases 5 and 6.
-- Worker size headroom is about 41 KiB on the free plan.
 - CSP keeps `'unsafe-inline'` for scripts until the Phase 7 nonce pass.
 - Git warns about LF→CRLF on every commit; add a `.gitattributes` (`* text=auto eol=lf`) when convenient.
 - `public/assets/Logo.png` duplicate can be removed.
 
 ## Next: Phase 5 (writeups)
 
-Markdown editor with preview, syntax highlighting, image upload to R2, terminal blocks, tags, series, spoiler lock for live events, votes, bookmarks and threaded comments. Needs an R2 bucket (and probably Workers Paid for bundle size); both need the owner's approval. Official writeup templates (from the Guidance plan) fit here.
+Markdown editor with preview, syntax highlighting, image upload to R2, terminal blocks, tags, series, spoiler lock for live events, votes, bookmarks and threaded comments. Needs an R2 bucket, which needs the owner's approval (Workers Paid is already in place). Official writeup templates (from the Guidance plan) fit here.
 
 ## How to run
 
