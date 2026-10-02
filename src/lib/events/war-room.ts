@@ -1,5 +1,6 @@
 import "server-only";
 import { requireMember } from "@/lib/auth/member";
+import { isStaff } from "@/lib/auth/platform";
 import { getDb } from "@/lib/db/client";
 import { findMembershipOf } from "@/lib/teams/queries";
 import { requestNow } from "./clock";
@@ -19,6 +20,8 @@ export async function loadWarRoom(slugRaw: string, opts: { forWrite: boolean }) 
   const db = getDb();
   const [event, membership] = await Promise.all([findEventBySlug(db, slug.data), findMembershipOf(db, member.id)]);
   if (!event || event.kind !== "ctf" || !membership) return notFound;
+  // A hidden event is gone for everyone except moderators and the team that added it.
+  if (event.hiddenAt && !isStaff(member.platformRole) && event.ownerTeamId !== membership.team.id) return notFound;
   const registration = await findRegistration(db, event.id, membership.team.id);
   if (!registration) return notFound;
   const writable = warRoomWritable(event, requestNow());

@@ -22,13 +22,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const db = getDb();
   const viewer = await loadViewer(db);
   const now = requestNow();
-  const rows = await listBoard(db, { includeHidden: viewer.staff || !!viewer.team });
+  const rows = await listBoard(db, { includeHidden: viewer.staff || !!viewer.team, now });
   const visible = rows.filter((r) => canSeeEvent(r.event, viewer)).map((r) => ({ ...r, phase: eventPhase(r.event, now) }));
   const counts = Object.fromEntries(TABS.map((t) => [t, visible.filter((r) => r.phase === t).length])) as Record<EventPhase, number>;
   const tab: EventPhase = TABS.includes(sp.tab as EventPhase) ? (sp.tab as EventPhase) : counts.live > 0 ? "live" : "upcoming";
   const kind = sp.kind === "ctf" || sp.kind === "community" ? sp.kind : null;
-  let list = visible.filter((r) => r.phase === tab && (!kind || r.event.kind === kind));
-  if (tab === "past") list = list.reverse().slice(0, 50);
+  const list = visible.filter((r) => r.phase === tab && (!kind || r.event.kind === kind));
   const canCreate = canEvent(actorFor(viewer, null), "event.create");
 
   const href = (t: EventPhase, k: string | null) => `/events?tab=${t}${k ? `&kind=${k}` : ""}`;

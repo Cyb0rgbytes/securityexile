@@ -27,8 +27,30 @@ export function ChallengeCard({ slug, c, isLead, writable }: { slug: string; c: 
   const [msg, setMsg] = useState<ActionState>({});
   const [notesState, notesAction] = useActionState<ActionState, FormData>(saveChallengeNotes.bind(null, slug, c.id), {});
   // Controlled: React resets uncontrolled fields after every action, which would wipe text on an error.
+  const linksText = c.links.map((l) => `${l.label} | ${l.url}`).join("\n");
   const [notesDraft, setNotesDraft] = useState(c.notes);
-  const [linksDraft, setLinksDraft] = useState(() => c.links.map((l) => `${l.label} | ${l.url}`).join("\n"));
+  const [linksDraft, setLinksDraft] = useState(linksText);
+  // `base` is the server version the draft started from (sent with the save, so a
+  // teammate's newer edit isn't overwritten); `seen` is the last version rendered.
+  const [base, setBase] = useState({ notes: c.notes, links: c.links });
+  const [seen, setSeen] = useState({ notes: c.notes, links: linksText });
+  if (seen.notes !== c.notes || seen.links !== linksText) {
+    // Auto-refresh brought a new version: adopt it unless the user has unsaved edits.
+    const untouched = notesDraft === seen.notes && linksDraft === seen.links;
+    const alreadySame = notesDraft === c.notes && linksDraft === linksText;
+    setSeen({ notes: c.notes, links: linksText });
+    if (untouched || alreadySame) {
+      setNotesDraft(c.notes);
+      setLinksDraft(linksText);
+      setBase({ notes: c.notes, links: c.links });
+    }
+  }
+  const stale = base.notes !== c.notes || JSON.stringify(base.links) !== JSON.stringify(c.links);
+  const loadLatest = () => {
+    setNotesDraft(c.notes);
+    setLinksDraft(linksText);
+    setBase({ notes: c.notes, links: c.links });
+  };
   const moves = MOVES.filter((m) => nextStatus(c.status, m, { isClaimer: c.claimedByMe, isLead }));
   const run = (fn: () => Promise<ActionState>) => start(async () => setMsg(await fn()));
 
@@ -77,6 +99,8 @@ export function ChallengeCard({ slug, c, isLead, writable }: { slug: string; c: 
           )}
           {writable && (
             <form action={notesAction} className="space-y-2">
+              <input type="hidden" name="baseNotes" value={base.notes} />
+              <input type="hidden" name="baseLinks" value={JSON.stringify(base.links)} />
               <label htmlFor={`n-${c.id}`} className="sr-only">
                 Notes for {c.name}
               </label>
@@ -90,6 +114,11 @@ export function ChallengeCard({ slug, c, isLead, writable }: { slug: string; c: 
                 <SubmitButton variant="ghost" className="!py-1 !text-xs" pending="saving…">
                   save notes
                 </SubmitButton>
+                {stale && (
+                  <button type="button" onClick={loadLatest} className="font-mono text-xs text-red-bright hover:text-fg">
+                    load latest (replaces your draft)
+                  </button>
+                )}
                 {(isLead || c.createdByMe) && (
                   <button
                     type="button"

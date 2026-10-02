@@ -53,3 +53,8 @@ describe("challengeInputSchema", () => {
   it("rejects unknown categories", () => expect(challengeInputSchema.safeParse({ name: "x", category: "cooking", points: "" }).success).toBe(false));
   it("rejects points over 10000", () => expect(challengeInputSchema.safeParse({ name: "x", category: "web", points: "10001" }).success).toBe(false));
 });
+
+describe("slugify reserved routes", () => {
+  it("never produces a slug that collides with /events/new", () => expect(slugify("New")).toBe("new-event"));
+  it("leaves other slugs alone", () => expect(slugify("New Year CTF")).toBe("new-year-ctf"));
+});

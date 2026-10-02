@@ -1,12 +1,11 @@
 import "server-only";
-import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, isNull, lte, type SQL } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { challenges, eventRegistrations, events, teams, users } from "@/lib/db/schema";
 
 export type EventRow = typeof events.$inferSelect;
 
-/** Board rows ordered by start; phases are derived in the page with eventPhase(). */
-export async function listBoard(db: Db, opts: { includeHidden: boolean }) {
+function boardQuery(db: Db, where: SQL | undefined) {
   return db
     .select({
       event: events,
@@ -17,10 +16,23 @@ export async function listBoard(db: Db, opts: { includeHidden: boolean }) {
     .from(events)
     .leftJoin(teams, eq(teams.id, events.ownerTeamId))
     .leftJoin(eventRegistrations, eq(eventRegistrations.eventId, events.id))
-    .where(opts.includeHidden ? undefined : isNull(events.hiddenAt))
-    .groupBy(events.id)
-    .orderBy(asc(events.startsAt))
-    .limit(300);
+    .where(where)
+    .groupBy(events.id);
+}
+
+/**
+ * Board rows: everything not yet over (soonest first), plus the 50 most recent past
+ * events. Queried separately so old events can never crowd out new ones.
+ * Phases are derived in the page with eventPhase().
+ */
+export async function listBoard(db: Db, opts: { includeHidden: boolean; now: number }) {
+  const visible = opts.includeHidden ? undefined : isNull(events.hiddenAt);
+  const now = new Date(opts.now);
+  const [current, past] = await Promise.all([
+    boardQuery(db, and(visible, gt(events.endsAt, now))).orderBy(asc(events.startsAt)).limit(200),
+    boardQuery(db, and(visible, lte(events.endsAt, now))).orderBy(desc(events.endsAt)).limit(50),
+  ]);
+  return [...current, ...past];
 }
 
 export async function findEventBySlug(db: Db, slug: string) {

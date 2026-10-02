@@ -3,6 +3,9 @@ import { EVENT_KINDS } from "@/lib/db/enums";
 import { FOCUS_CATEGORIES } from "@/lib/teams/validation";
 import { MAX_EVENT_MS } from "./timing";
 
+/** Static routes under /events that an event slug must never shadow. */
+const RESERVED_SLUGS = new Set(["new"]);
+
 export function slugify(title: string): string {
   const s = title
     .toLowerCase()
@@ -10,7 +13,8 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/g, "");
-  return s || "event";
+  if (!s) return "event";
+  return RESERVED_SLUGS.has(s) ? `${s}-event` : s;
 }
 
 /** Browser sends `new Date(localValue).toISOString()`; require an explicit zone so the server never guesses. */

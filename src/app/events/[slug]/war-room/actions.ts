@@ -6,7 +6,7 @@
  * UPDATE … WHERE status = <expected>, so concurrent clicks can't both win.
  */
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getEnv } from "@/lib/db/client";
 import { isUniqueViolation } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
@@ -110,11 +110,19 @@ export async function saveChallengeNotes(slug: string, challengeId: string, _pre
   if (!notes.success) return { error: firstIssue(notes.error) };
   const links = parseLinks(String(form.get("links") ?? ""));
   if ("error" in links) return { error: links.error };
+  // The notes/links the editor started from; the save only lands if nobody changed them since.
+  const baseNotes = String(form.get("baseNotes") ?? "").replace(/\r/g, "");
+  const baseLinks = String(form.get("baseLinks") ?? "[]");
+  const where = and(eq(challenges.id, challengeId), eq(challenges.eventId, event.id), eq(challenges.teamId, team.id));
   const res = await db
     .update(challenges)
-    .set({ notesMd: notes.data || null, links })
-    .where(and(eq(challenges.id, challengeId), eq(challenges.eventId, event.id), eq(challenges.teamId, team.id)));
-  if (changes(res) === 0) return { error: "Unknown challenge." };
+    .set({ notesMd: notes.data.replace(/\r\n/g, "\n") || null, links })
+    // Line endings differ between browsers and stored rows, so compare without CRs.
+    .where(and(where, sql`replace(coalesce(${challenges.notesMd}, ''), char(13), '') = ${baseNotes}`, sql`${challenges.links} = ${baseLinks}`));
+  if (changes(res) === 0) {
+    const exists = await db.query.challenges.findFirst({ columns: { id: true }, where });
+    return { error: exists ? "A teammate changed these notes. Your text is still here: copy it, load the latest, then merge." : "Unknown challenge." };
+  }
   revalidatePath(`/events/${event.slug}/war-room`);
   return { ok: "Saved." };
 }
