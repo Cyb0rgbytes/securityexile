@@ -141,6 +141,9 @@ body {
 .glitch::before,
 .glitch::after {
   content: attr(data-text);
+  /* Empty alt text: the colour-split copies are decoration, so screen readers
+     must not announce the text three times. (Fallback above for old engines.) */
+  content: attr(data-text) / "";
   position: absolute;
   inset: 0;
   opacity: 0;

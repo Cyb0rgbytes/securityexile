@@ -6,13 +6,17 @@ import { users } from "@/lib/db/schema";
 import { getMember } from "@/lib/auth/member";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { NeonButton } from "@/components/ui/NeonButton";
+import Link from "next/link";
+import { findMembershipOf } from "@/lib/teams/queries";
+import { EmblemBadge } from "@/components/teams/EmblemBadge";
+import { RoleChip } from "@/components/teams/RoleChip";
 
 type Props = { params: Promise<{ handle: string }> };
 
 async function findByHandle(handle: string) {
   return getDb().query.users.findFirst({
     // Only public fields leave the server.
-    columns: { handle: true, displayName: true, avatarUrl: true, bio: true, xp: true, rankTier: true, createdAt: true },
+    columns: { id: true, handle: true, displayName: true, avatarUrl: true, bio: true, xp: true, rankTier: true, createdAt: true },
     where: eq(users.handle, handle.toLowerCase()),
   });
 }
@@ -30,7 +34,7 @@ export default async function DossierPage({ params }: Props) {
   const user = await findByHandle(handle);
   if (!user?.handle) notFound();
 
-  const viewer = await getMember();
+  const [viewer, team] = await Promise.all([getMember(), findMembershipOf(getDb(), user.id)]);
   const isSelf = viewer?.handle === user.handle;
 
   return (
@@ -63,6 +67,18 @@ export default async function DossierPage({ params }: Props) {
               <dt className="inline text-fg-muted">xp </dt>
               <dd className="inline text-green-bright">{user.xp}</dd>
             </div>
+            {team && (
+              <div className="flex items-center gap-2">
+                <dt className="text-fg-muted">team</dt>
+                <dd className="flex items-center gap-2">
+                  <EmblemBadge emblem={team.team.logoKey} size={20} />
+                  <Link href={`/teams/${team.team.tag}`} className="text-fg hover:text-green-bright">
+                    {team.team.name} [{team.team.tag}]
+                  </Link>
+                  <RoleChip role={team.role} />
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="inline text-fg-muted">joined </dt>
               <dd className="inline text-fg">{joined.format(user.createdAt)}</dd>

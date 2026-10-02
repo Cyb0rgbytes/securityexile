@@ -53,3 +53,4 @@ next-env.d.ts
 
 # clerk keyless / local secrets
 .clerk/
+!.dev.vars.example

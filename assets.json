@@ -40,6 +40,92 @@
       "credits": 0.25,
       "created": "2026-10-01",
       "prompt": "A holographic 'network core': a glowing geodesic wireframe sphere (icosahedron lattice of thin luminous lines) floating dead-center, with a faint inner energy glow. Around it, three tilted thin orbital rings carry small bright spherical data nodes, connected to the core by faint dashed light filaments. Colors: neon cyan #00e5ff and neon green #00ff9c light on a pure near-black #05070a background, with a single tiny magenta #ff2bd6 accent node. Soft bloom glow, subtle particle dust, slight depth of field. Sci-fi hacker interface aesthetic, clean, minimal, high contrast. Object fully in frame with generous dark margin on all sides, nothing touching the edges. No text, no letters, no logos, no UI, no people, no floor."
+    },
+    {
+      "id": "team-emblems",
+      "status": "active",
+      "purpose": "Default team emblem set (teams.logo_key = emblem:<slug>) until logo uploads arrive in Phase 5",
+      "tool": "generate_image (1 test) + generate_image_batch (7)",
+      "model": "gpt_image_2_5",
+      "aspect_ratio": "1:1",
+      "created": "2026-10-02",
+      "credits": 2,
+      "post": "sharp: 256px + 128px webp (q84/q82)",
+      "prompt_template": "Team emblem badge: <SUBJECT>, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (<ACCENT>), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, <symmetrical|balanced> composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism.",
+      "items": [
+        {
+          "slug": "falcon",
+          "job_id": "61565d71-a8b9-4391-ba34-fe8e398f9e90",
+          "files": [
+            "public/assets/emblems/falcon.webp",
+            "public/assets/emblems/falcon-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized FALCON head in profile, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eye), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, symmetrical composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "owl",
+          "job_id": "13cc80a1-f95c-4b91-a5c0-f7fda0a22702",
+          "files": [
+            "public/assets/emblems/owl.webp",
+            "public/assets/emblems/owl-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized OWL face, front view with large round eyes and ear tufts, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the pupils), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, symmetrical composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "wolf",
+          "job_id": "5db55248-6934-471f-8ed8-52263ccf1243",
+          "files": [
+            "public/assets/emblems/wolf.webp",
+            "public/assets/emblems/wolf-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized WOLF head in three-quarter view with sharp ears, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eye), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, balanced composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "serpent",
+          "job_id": "bfabffd5-c78a-4152-8ed5-591fbde12eaf",
+          "files": [
+            "public/assets/emblems/serpent.webp",
+            "public/assets/emblems/serpent-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized coiled SERPENT (snake) with its head raised facing right, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eye and forked tongue), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, balanced composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "raven",
+          "job_id": "4ce84d3a-5209-4c15-83f5-1fb9386d6ab4",
+          "files": [
+            "public/assets/emblems/raven.webp",
+            "public/assets/emblems/raven-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized RAVEN head in profile with a long sharp beak, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eye), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, balanced composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "lynx",
+          "job_id": "964a7685-7777-48b6-b022-dfdbfc7df05f",
+          "files": [
+            "public/assets/emblems/lynx.webp",
+            "public/assets/emblems/lynx-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized LYNX face, front view with pointed tufted ears and cheek ruffs, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eyes), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, symmetrical composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "scorpion",
+          "job_id": "48e754d2-b6df-4b29-abf5-dead2037499c",
+          "files": [
+            "public/assets/emblems/scorpion.webp",
+            "public/assets/emblems/scorpion-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized SCORPION seen from above with raised curved tail and pincers, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the stinger tip), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, symmetrical composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        },
+        {
+          "slug": "kraken",
+          "job_id": "e220d89b-244c-444e-b2cf-b9224423d59c",
+          "files": [
+            "public/assets/emblems/kraken.webp",
+            "public/assets/emblems/kraken-128.webp"
+          ],
+          "prompt": "Team emblem badge: a stylized KRAKEN (giant octopus) head with curling tentacles spreading below, drawn as a clean monoline neon emblem, centered inside a circular badge ring. Colors: emerald green #00c46a glowing lines with bone white #f2efe9 highlights and a single signal red #e8192c accent (the eyes), on a solid near-black #05070a background. Flat vector-like esports/cybersecurity crest style, bold readable silhouette that still works at 48 pixels, symmetrical composition, thin double ring border with small tick marks like a targeting reticle, subtle outer glow. Fills most of the frame with a small even margin. No text, no letters, no numbers, no watermark, no gradient background, no 3D render, no photorealism."
+        }
+      ]
     }
   ]
 }

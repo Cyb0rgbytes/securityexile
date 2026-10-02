@@ -21,14 +21,10 @@ import {
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
 
-// ---------- shared enums ----------
+// ---------- shared enums (values live in ./enums so client code can import them) ----------
 
-export const RANK_TIERS = ["initiate", "operator", "specialist", "elite", "legend"] as const;
-export const JOIN_MODES = ["open", "invite", "closed"] as const;
-export const TEAM_ROLES = ["captain", "co_captain", "member", "reserve"] as const;
-export const REQUEST_STATUSES = ["pending", "approved", "rejected"] as const;
-export const CHALLENGE_STATUSES = ["open", "claimed", "solving", "solved"] as const;
-export const DIFFICULTIES = ["beginner", "easy", "medium", "hard", "insane"] as const;
+import { CHALLENGE_STATUSES, DIFFICULTIES, JOIN_MODES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES } from "./enums";
+export { CHALLENGE_STATUSES, DIFFICULTIES, JOIN_MODES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES };
 
 /** SQL `col IN ('a','b')` for a CHECK constraint built from a const tuple. */
 const oneOf = (column: AnySQLiteColumn, values: readonly string[]) =>
@@ -111,7 +107,8 @@ export const teamMembers = sqliteTable(
     check("team_members_role_ck", oneOf(t.role, TEAM_ROLES)),
     // Exactly one captain per team, enforced by the database.
     uniqueIndex("team_members_one_captain_uq").on(t.teamId).where(sql`${t.role} = 'captain'`),
-    index("team_members_user_idx").on(t.userId),
+    // One team per member (owner decision 2026-10-02; schema change 0001).
+    uniqueIndex("team_members_one_team_per_user_uq").on(t.userId),
   ],
 );
 

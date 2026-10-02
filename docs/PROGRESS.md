@@ -9,8 +9,9 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 | 1. Scaffold, design system, layout, landing | Done | `3be428b` |
 | 1b. Rebrand around community crest + background loop, copy reframed | Done | `33cbb9a` |
 | 2. Auth + DB schema | Done, verified end to end by the owner (first member: @darktemplar) | `7625885` + redirect fix |
-| 3. Teams + invite codes + join requests | Next | |
-| 4–7 | Not started | |
+| 3. Teams + invite codes + join requests | Done; two-person code redemption still to be tried by the owner (see Phase 3) | this commit |
+| 4. Events + war room | Next | |
+| 5–7 | Not started | |
 
 Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
 
@@ -33,6 +34,26 @@ Runs locally with `npm run build && npm run start -- --port 3000`. Nothing is de
 - The Clerk CLI is installed globally (`npm i -g clerk`, v3.4).
 
 **Owner to-dos in the Clerk dashboard:** enable Discord (currently GitHub, Google, X are on), rename the app to "Security Exile", optionally delete the extra claimed app.
+
+## Phase 3 — teams, invite codes, join requests (2026-10-02)
+
+**Owner decisions:** one team per member; no size cap; any member with a handle can create a team (3/day); default Higgsfield emblem set now, logo uploads in Phase 5 (R2).
+
+**Schema change 0001 (owner-approved):** plain index on `team_members(user_id)` → unique `team_members_one_team_per_user_uq`. Applied locally and remotely. Emblems live in the existing `teams.logo_key` as `emblem:<slug>`.
+
+**Rules.** Join modes: *open* = request to join (captain/co-captain approves) or code; *invite* = codes only; *closed* = nobody, existing codes stop working. Permissions are one pure function, `can()` in `src/lib/teams/permissions.ts`: captain does everything; co-captain edits bio/focus, manages codes and requests, removes members/reserves; members/reserves can only leave. A captain must transfer before leaving; the last member leaving disbands the team. Every server action re-checks membership and `can()` server-side, validates with Zod, and writes an `audit_log` row in the same `db.batch()` as the change.
+
+**Invite codes** (`src/lib/teams/invites.ts`): `TEAM-XXXX-XXXX`, Crockford base32 (40 bits), normalisation accepts lowercase / missing dashes / I-L-O look-alikes. Stored as HMAC-SHA256 with `INVITE_PEPPER` (local `.dev.vars`, git-ignored; becomes a Wrangler secret at deploy). Private codes are shown once and kept only as hash + 2-char hint; the public code (one active per team) is visible to members. Redemption: membership check → KV rate limits (5/10 min per member, 20/10 min per hashed IP) → hash lookup → one atomic `UPDATE … uses = uses + 1 WHERE` (not revoked / not expired / under max uses) → membership insert, with the use given back if that loses a race. Every attempt is logged in `invite_redemptions`; all failures return the same generic message.
+
+**Pages:** `/teams`, `/teams/new`, `/teams/[tag]`, `/teams/[tag]/manage` (requests, codes, members, profile, identity, audit log), `/join`; the profile shows the member's team. `scripts/seed-dev.mjs <TAG>` / `--clean` adds fake members + requests to the **local** DB only.
+
+**Higgsfield:** 8 emblems (falcon, owl, wolf, serpent, raven, lynx, scorpion, kraken), `gpt_image_2_5`, 1 test + batch of 7, **2.00 credits**; prompts in `assets.json`. Account balance afterwards 2,592.75: the ≈405-credit gap since the 3,000 grant comes from the owner's own Seedance/Genjutsu/Kling generations, not this project (checked in the transaction log).
+
+**Verified:** 112 unit tests (full permission matrix, code generation/normalisation/HMAC, validation, rate-limit windows); DB rejects a second team per member and a second captain; build clean. In the browser, signed in as the owner via a Clerk impersonation ticket (labelled `claude-phase3-test`, revoked afterwards; the ticket also appears in the session log but is single-use and dead): approve and reject requests; set roles; remove with wrong and correct confirmation; private code shown once with only hash + hint stored; public code visible to members and absent from the signed-out HTML; revoke; leaving as captain refused; transfer captaincy; co-captain console shows exactly the co-captain powers; audit log describes every action without exposing codes; phone width has no overflow. The owner created the first team (`RISE`) through the real UI.
+
+**Fixed during testing:** the role dropdown showed the old role after saving (React form reset; fixed with `key={role}`); the glitch effect's CSS copies made screen readers read headlines three times (fixed with `content: attr(data-text) / ""`); the seed script broke on Windows shell quoting (now uses `--file`).
+
+**Not verified in the browser:** code redemption and the rate limits from a second, team-less account (needs a second real person; unit-tested). Steps for the owner: second browser profile → sign up with `you+clerk_test@example.com` (code 424242) → `/join` → paste RISE's public code from the team page → should land on `/teams/RISE`; then try a wrong code 6× to hit the limit.
 
 ## What Security Exile is (corrected 2026-10-02)
 
@@ -90,9 +111,9 @@ Raw originals live in `brand-src/` (git-ignored, large). Shipped derivatives are
 - Git warns about LF→CRLF on every commit; add a `.gitattributes` (`* text=auto eol=lf`) when convenient.
 - `public/assets/Logo.png` duplicate can be removed.
 
-## Next: Phase 3 (teams, invite codes, join requests)
+## Next: Phase 4 (events board + war room)
 
-Team creation (name, 2–5 char tag, logo, bio, focus categories, join mode), roles and captaincy transfer, kick/leave; private and public invite codes (`TEAM-XXXX-XXXX`, hash-only storage, expiry, max uses, revocation, every redemption logged, KV rate limits per user and IP); join requests with approve/reject; audit log for captain actions. Planned Higgsfield spend: default team emblem set, about 2–10 credits, shown before generating. Team logo *uploads* need R2, which is a separate approval (R2 bucket not created yet).
+External CTF event board (upcoming / live / past), team registration with roster, and a private per-event war room (challenge tracker: claim → solving → solved, notes, links). Uses the existing `events`, `event_registrations` and `challenges` tables.
 
 ## How to run
 
