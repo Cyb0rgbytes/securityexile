@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sniffImage, stripJpegMetadata } from "./sniff";
+import { readLimited, sniffImage, stripJpegMetadata } from "./sniff";
 
 const bytes = (...xs: number[]) => new Uint8Array(xs);
 const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0));
@@ -42,4 +42,17 @@ describe("stripJpegMetadata", () => {
     expect(out.at(-1)).toBe(0xd9);
   });
   it("returns non-JPEG input unchanged", () => expect(stripJpegMetadata(PNG)).toEqual(PNG));
+});
+
+describe("readLimited", () => {
+  const streamOf = (...parts: number[]) =>
+    new ReadableStream<Uint8Array>({
+      start(c) {
+        for (const n of parts) c.enqueue(new Uint8Array(n));
+        c.close();
+      },
+    });
+  it("returns all bytes when under the limit", async () => expect((await readLimited(streamOf(3, 4), 10))?.byteLength).toBe(7));
+  it("returns null as soon as the limit is passed", async () => expect(await readLimited(streamOf(6, 6, 6), 10)).toBeNull());
+  it("handles a missing body", async () => expect((await readLimited(null, 10))?.byteLength).toBe(0));
 });

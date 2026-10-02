@@ -7,6 +7,34 @@ export type ImageType =
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const MAX_MEMBER_BYTES = 100 * 1024 * 1024;
 
+/**
+ * Reads a request body but gives up (returns null) as soon as it exceeds `max` bytes,
+ * so a body without Content-Length can't be buffered whole into the isolate's memory.
+ */
+export async function readLimited(body: ReadableStream<Uint8Array> | null, max: number): Promise<Uint8Array | null> {
+  if (!body) return new Uint8Array(0);
+  const reader = body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.byteLength;
+  }
+  return out;
+}
+
 const starts = (b: Uint8Array, sig: number[], at = 0) => b.length >= at + sig.length && sig.every((v, i) => b[at + i] === v);
 const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0));
 

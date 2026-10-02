@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { EmblemBadge } from "@/components/teams/EmblemBadge";
 import type { ListedWriteup } from "@/lib/writeups/queries";
-import { readMinutes } from "@/lib/writeups/render";
+import { readMinutesFromChars } from "@/lib/writeups/render";
 
 export function WriteupCard({ w, now }: { w: ListedWriteup; now: number }) {
   const locked = w.spoilerUntil !== null && w.spoilerUntil.getTime() > now;
   return (
     <Link href={`/w/${w.authorHandle}/${w.slug}`} className="block rounded border border-line bg-bg-deep/60 p-4 transition-colors hover:border-green-bright">
       <p className="font-mono text-xs text-fg-muted">
-        {[w.category, w.difficulty].filter(Boolean).join(" / ") || "writeup"} · {readMinutes(w.bodyMd)} min
+        {[w.category, w.difficulty].filter(Boolean).join(" / ") || "writeup"} · {readMinutesFromChars(w.bodyChars)} min
         {locked && <span className="ml-2 text-red-bright">team only until the event ends</span>}
       </p>
       <h3 className="mt-1 text-lg text-fg">{w.title}</h3>

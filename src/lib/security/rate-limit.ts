@@ -33,7 +33,11 @@ export const LIMITS = {
   comment: { max: 20, windowSec: 3600 },
   upload: { max: 20, windowSec: 3600 },
   preview: { max: 120, windowSec: 3600 },
+  writeupSave: { max: 120, windowSec: 3600 },
 } as const satisfies Record<string, Limit>;
+
+/** Unpublished writeups a member may keep (each row can be up to ~2 MB with its rendered HTML). */
+export const MAX_DRAFTS = 200;
 
 export interface RateResult {
   ok: boolean;

@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { requireMember } from "@/lib/auth/member";
 import { isStaff } from "@/lib/auth/platform";
@@ -15,18 +15,18 @@ import { isUniqueViolation } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { auditLog, events, uploads, writeupSeries, writeupTags, writeups } from "@/lib/db/schema";
 import { slugify } from "@/lib/events/validation";
-import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
+import { hit, LIMITS, MAX_DRAFTS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
 import { findMembershipOf } from "@/lib/teams/queries";
 import { filesOrigin } from "@/lib/writeups/files";
 import { canEditWriteup } from "@/lib/writeups/permissions";
-import { findWriteupById } from "@/lib/writeups/queries";
+import { chunk, findWriteupById } from "@/lib/writeups/queries";
 import { renderWriteup } from "@/lib/writeups/render";
 import { idSchema, parseTags, writeupInputSchema } from "@/lib/writeups/validation";
 import { spoilerFor } from "@/lib/writeups/visibility";
 import type { ActionState } from "@/app/teams/actions";
 
-export type SaveState = ActionState & { id?: string; savedAt?: number };
+export type SaveState = ActionState & { id?: string; savedAt?: number; seriesId?: string };
 
 const firstIssue = (e: { issues: { message: string }[] }) => e.issues[0]?.message ?? "Invalid input.";
 const notFound = { error: "Writeup not found." } as const;
@@ -71,6 +71,14 @@ export async function saveWriteup(id: string | null, _prev: SaveState, form: For
     if (!existing || !canEditWriteup(existing, member.id)) return notFound;
   }
 
+  // Saves render up to 100 KB and write a large row: cap the rate, and the number of drafts.
+  const rl = await hit(getEnv().KV, `writeup-save:${member.id}`, LIMITS.writeupSave);
+  if (!rl.ok) return { error: retryMessage(rl) };
+  if (!existing) {
+    const [{ drafts }] = await db.select({ drafts: count() }).from(writeups).where(and(eq(writeups.authorId, member.id), isNull(writeups.publishedAt)));
+    if (drafts >= MAX_DRAFTS) return { error: `You have ${MAX_DRAFTS} drafts. Publish or delete some before starting another.` };
+  }
+
   const membership = await findMembershipOf(db, member.id);
   const teamId = v.asTeam ? (membership?.team.id ?? null) : null;
   if (v.asTeam && !teamId) return { error: "Join a team before posting as a team." };
@@ -109,7 +117,8 @@ export async function saveWriteup(id: string | null, _prev: SaveState, form: For
     db.delete(writeupTags).where(eq(writeupTags.writeupId, writeupId)),
   ];
   if (v.tags.length) ops.push(db.insert(writeupTags).values(v.tags.map((tag) => ({ writeupId, tag }))));
-  if (uploadIds.length) ops.push(db.update(uploads).set({ writeupId }).where(and(eq(uploads.ownerId, member.id), inArray(uploads.id, uploadIds))));
+  // Chunked: D1 binds at most 100 parameters per statement.
+  for (const part of chunk(uploadIds, 90)) ops.push(db.update(uploads).set({ writeupId }).where(and(eq(uploads.ownerId, member.id), inArray(uploads.id, part))));
   try {
     await db.batch(ops as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
   } catch (e) {
@@ -117,7 +126,7 @@ export async function saveWriteup(id: string | null, _prev: SaveState, form: For
     throw e;
   }
   revalidateWriteups(member.handle, slug);
-  return { ok: "Saved.", id: writeupId, savedAt: Date.now() };
+  return { ok: "Saved.", id: writeupId, savedAt: Date.now(), seriesId: seriesId ?? undefined };
 }
 
 export async function setPublished(id: string, publish: boolean): Promise<ActionState> {

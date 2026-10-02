@@ -147,6 +147,11 @@ export function tocFromHtml(html: string): { depth: 2 | 3; id: string; text: str
   return out;
 }
 
+/** Read time from a character count (≈6 characters per word, 200 words per minute). */
+export function readMinutesFromChars(chars: number): number {
+  return Math.max(1, Math.round(chars / 6 / 200));
+}
+
 export function readMinutes(md: string): number {
   const words = md.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 200));

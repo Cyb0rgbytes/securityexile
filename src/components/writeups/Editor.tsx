@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FormMessage, inputCls, labelCls, SubmitButton } from "@/components/teams/FormBits";
+import { FormMessage, inputCls, labelCls } from "@/components/teams/FormBits";
 import { DIFFICULTIES } from "@/lib/db/enums";
 import { FOCUS_CATEGORIES } from "@/lib/teams/validation";
 import { TEMPLATES } from "@/lib/writeups/templates";
@@ -28,9 +28,28 @@ function readLocal(id: string | null): LocalDraft | null {
 
 export function Editor({ initial, events, series, hasTeam }: { initial: EditorInitial; events: { id: string; title: string }[]; series: { id: string; title: string }[]; hasTeam: boolean }) {
   const router = useRouter();
-  const [state, action] = useActionState<SaveState, FormData>(saveWriteup.bind(null, initial.id), {});
+  const [state, action, saving] = useActionState<SaveState, FormData>(saveWriteup.bind(null, initial.id), {});
+  const [, startSave] = useTransition();
   const [title, setTitle] = useState(initial.title);
   const [body, setBody] = useState(initial.bodyMd);
+  // Every field is controlled: React resets uncontrolled fields after each form action, and a
+  // mounted <select> ignores new defaultValues, so a second save would send stale settings
+  // (e.g. drop the event and with it the spoiler lock).
+  const [category, setCategory] = useState(initial.category);
+  const [difficulty, setDifficulty] = useState(initial.difficulty);
+  const [tags, setTags] = useState(initial.tags);
+  const [eventId, setEventId] = useState(initial.eventId);
+  const [seriesId, setSeriesId] = useState(initial.seriesId);
+  const [seriesTitle, setSeriesTitle] = useState("");
+  const [seriesOrder, setSeriesOrder] = useState(initial.seriesOrder);
+  const [asTeam, setAsTeam] = useState(initial.asTeam);
+  // A series created inline becomes the selected series, so later saves don't create it again.
+  const [adoptedSeries, setAdoptedSeries] = useState<string | undefined>(undefined);
+  if (state.seriesId && state.seriesId !== adoptedSeries) {
+    setAdoptedSeries(state.seriesId);
+    setSeriesId(state.seriesId);
+    setSeriesTitle("");
+  }
   const [tab, setTab] = useState<"write" | "preview">("write");
   const [preview, setPreview] = useState<{ html?: string; error?: string }>({});
   const [previewing, startPreview] = useTransition();
@@ -96,7 +115,16 @@ export function Editor({ initial, events, series, hasTeam }: { initial: EditorIn
   };
 
   return (
-    <form action={action} className="space-y-5">
+    <form
+      className="space-y-5"
+      onSubmit={(e) => {
+        // Submitted by hand rather than via <form action>: React resets a form after its action
+        // runs, which would make the pickers show stale values while state holds the real ones.
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startSave(() => action(data));
+      }}
+    >
       {offerRestore && (
         <div role="status" className="flex flex-wrap items-center gap-3 rounded border border-red/50 p-3 text-sm">
           <span>Your browser has newer unsaved text for this writeup.</span>
@@ -111,21 +139,21 @@ export function Editor({ initial, events, series, hasTeam }: { initial: EditorIn
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="category" className={labelCls}>Category</label>
-          <select id="category" name="category" defaultValue={initial.category} className={`${inputCls} mt-1`}>
+          <select id="category" name="category" value={category} onChange={(e) => setCategory(e.target.value)} className={`${inputCls} mt-1`}>
             <option value="">—</option>
             {FOCUS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label htmlFor="difficulty" className={labelCls}>Level</label>
-          <select id="difficulty" name="difficulty" defaultValue={initial.difficulty} className={`${inputCls} mt-1`}>
+          <select id="difficulty" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className={`${inputCls} mt-1`}>
             <option value="">—</option>
             {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div>
           <label htmlFor="tags" className={labelCls}>Tags (comma separated, up to 5)</label>
-          <input id="tags" name="tags" defaultValue={initial.tags} placeholder="sqli, jwt" className={`${inputCls} mt-1`} />
+          <input id="tags" name="tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="sqli, jwt" className={`${inputCls} mt-1`} />
         </div>
       </div>
 
@@ -169,29 +197,29 @@ export function Editor({ initial, events, series, hasTeam }: { initial: EditorIn
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="eventId" className={labelCls}>Event (locks the writeup until it ends)</label>
-            <select id="eventId" name="eventId" defaultValue={initial.eventId} className={`${inputCls} mt-1`}>
+            <select id="eventId" name="eventId" value={eventId} onChange={(e) => setEventId(e.target.value)} className={`${inputCls} mt-1`}>
               <option value="">none</option>
               {events.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="seriesId" className={labelCls}>Series</label>
-            <select id="seriesId" name="seriesId" defaultValue={initial.seriesId} className={`${inputCls} mt-1`}>
+            <select id="seriesId" name="seriesId" value={seriesId} onChange={(e) => setSeriesId(e.target.value)} className={`${inputCls} mt-1`}>
               <option value="">none / new below</option>
               {series.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="seriesTitle" className={labelCls}>…or start a new series</label>
-            <input id="seriesTitle" name="seriesTitle" maxLength={80} className={`${inputCls} mt-1`} />
+            <input id="seriesTitle" name="seriesTitle" maxLength={80} value={seriesTitle} onChange={(e) => setSeriesTitle(e.target.value)} className={`${inputCls} mt-1`} />
           </div>
           <div>
             <label htmlFor="seriesOrder" className={labelCls}>Position in series</label>
-            <input id="seriesOrder" name="seriesOrder" inputMode="numeric" defaultValue={initial.seriesOrder} className={`${inputCls} mt-1`} />
+            <input id="seriesOrder" name="seriesOrder" inputMode="numeric" value={seriesOrder} onChange={(e) => setSeriesOrder(e.target.value)} className={`${inputCls} mt-1`} />
           </div>
           {hasTeam && (
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="asTeam" defaultChecked={initial.asTeam} /> post as part of my team
+              <input type="checkbox" name="asTeam" checked={asTeam} onChange={(e) => setAsTeam(e.target.checked)} /> post as part of my team
             </label>
           )}
         </div>
@@ -199,7 +227,13 @@ export function Editor({ initial, events, series, hasTeam }: { initial: EditorIn
 
       <FormMessage state={state} />
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton pending="saving…">{initial.id ? "save" : "save draft"}</SubmitButton>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded bg-green px-4 py-2 font-mono text-sm font-semibold text-bg-deep transition-colors hover:bg-green-bright disabled:opacity-60"
+        >
+          {saving ? "saving…" : initial.id ? "save" : "save draft"}
+        </button>
         {initial.published && <span className="font-mono text-xs text-fg-muted">published: saving updates the live page</span>}
       </div>
     </form>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hit, LIMITS, type KVLike } from "./rate-limit";
+import { hit, LIMITS, MAX_DRAFTS, type KVLike } from "./rate-limit";
 
 function fakeKV(): KVLike & { store: Map<string, { v: string; ttl?: number }> } {
   const store = new Map<string, { v: string; ttl?: number }>();
@@ -61,5 +61,12 @@ describe("Phase 5 limits", () => {
     expect(LIMITS.comment).toEqual({ max: 20, windowSec: 3600 });
     expect(LIMITS.upload).toEqual({ max: 20, windowSec: 3600 });
     expect(LIMITS.preview).toEqual({ max: 120, windowSec: 3600 });
+  });
+});
+
+describe("writeup save limits", () => {
+  it("cap saves per hour and drafts per member", () => {
+    expect(LIMITS.writeupSave).toEqual({ max: 120, windowSec: 3600 });
+    expect(MAX_DRAFTS).toBe(200);
   });
 });
