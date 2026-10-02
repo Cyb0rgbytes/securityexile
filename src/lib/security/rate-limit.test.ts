@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hit, type KVLike } from "./rate-limit";
+import { hit, LIMITS, type KVLike } from "./rate-limit";
 
 function fakeKV(): KVLike & { store: Map<string, { v: string; ttl?: number }> } {
   const store = new Map<string, { v: string; ttl?: number }>();
@@ -43,5 +43,13 @@ describe("hit()", () => {
     const r = await hit(kv, "u1", limit, T0 + 590_000);
     expect(r.retryAfter).toBe(10);
     expect([...kv.store.values()][0].ttl).toBeGreaterThanOrEqual(60);
+  });
+});
+
+describe("Phase 4 limits", () => {
+  it("match the spec", () => {
+    expect(LIMITS.eventCreate).toEqual({ max: 3, windowSec: 86_400 });
+    expect(LIMITS.challengeCreate).toEqual({ max: 60, windowSec: 3600 });
+    expect(LIMITS.warRoomWrite).toEqual({ max: 300, windowSec: 3600 });
   });
 });

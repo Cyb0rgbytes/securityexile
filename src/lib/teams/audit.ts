@@ -16,7 +16,15 @@ export type AuditAction =
   | "member.set_role"
   | "member.kick"
   | "member.leave"
-  | "captain.transfer";
+  | "captain.transfer"
+  | "event.create"
+  | "event.update"
+  | "event.delete"
+  | "event.hide"
+  | "event.unhide"
+  | "event.register"
+  | "event.unregister"
+  | "event.roster";
 
 /**
  * Builds an audit_log row. Returned (not inserted) so callers can put the
@@ -59,6 +67,14 @@ export function describeAudit(action: string, actor: string | null, meta: Record
     case "member.kick": return `${who} removed ${target}`;
     case "member.leave": return `${who} left the team`;
     case "captain.transfer": return `${who} handed captaincy to ${target}`;
+    case "event.create": return `${who} added the event ${m.title ?? ""}`.trim();
+    case "event.update": return `${who} edited the event ${m.title ?? ""}`.trim();
+    case "event.delete": return `${who} deleted the event ${m.title ?? ""}`.trim();
+    case "event.hide": return `${who} hid the event ${m.title ?? ""}`.trim();
+    case "event.unhide": return `${who} restored the event ${m.title ?? ""}`.trim();
+    case "event.register": return `${who} registered the team for ${m.title ?? "an event"}`;
+    case "event.unregister": return `${who} withdrew the team from ${m.title ?? "an event"}`;
+    case "event.roster": return `${who} updated the roster for ${m.title ?? "an event"}`;
     default: return `${who}: ${action}`;
   }
 }

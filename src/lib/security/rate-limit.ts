@@ -25,6 +25,9 @@ export const LIMITS = {
   inviteRedeemIp: { max: 20, windowSec: 600 },
   teamCreate: { max: 3, windowSec: 86_400 },
   joinRequest: { max: 10, windowSec: 86_400 },
+  eventCreate: { max: 3, windowSec: 86_400 },
+  challengeCreate: { max: 60, windowSec: 3600 },
+  warRoomWrite: { max: 300, windowSec: 3600 },
 } as const satisfies Record<string, Limit>;
 
 export interface RateResult {
