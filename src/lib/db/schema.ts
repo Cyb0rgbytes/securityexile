@@ -23,8 +23,8 @@ import {
 
 // ---------- shared enums (values live in ./enums so client code can import them) ----------
 
-import { CHALLENGE_STATUSES, DIFFICULTIES, JOIN_MODES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES } from "./enums";
-export { CHALLENGE_STATUSES, DIFFICULTIES, JOIN_MODES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES };
+import { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES } from "./enums";
+export { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES };
 
 /** SQL `col IN ('a','b')` for a CHECK constraint built from a const tuple. */
 const oneOf = (column: AnySQLiteColumn, values: readonly string[]) =>
@@ -56,12 +56,15 @@ export const users = sqliteTable(
     xp: integer("xp").notNull().default(0),
     rankTier: text("rank_tier", { enum: RANK_TIERS }).notNull().default("initiate"),
     skills: text("skills_json", { mode: "json" }).$type<Record<string, number>>().notNull().default({}),
+    /** site-wide role; only power is hiding events. Set by a reviewed DB command, never in-app. */
+    platformRole: text("platform_role", { enum: PLATFORM_ROLES }).notNull().default("member"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     check("users_rank_tier_ck", oneOf(t.rankTier, RANK_TIERS)),
     check("users_xp_ck", sql`${t.xp} >= 0`),
+    check("users_platform_role_ck", oneOf(t.platformRole, PLATFORM_ROLES)),
   ],
 );
 
@@ -207,10 +210,17 @@ export const events = sqliteTable(
     startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
     endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
     weight: integer("weight"),
+    kind: text("kind", { enum: EVENT_KINDS }).notNull().default("ctf"),
+    description: text("description"),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    /** the team whose captain/co-captains may edit the event */
+    ownerTeamId: text("owner_team_id").references(() => teams.id, { onDelete: "set null" }),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
   },
   (t) => [
     check("events_window_ck", sql`${t.endsAt} > ${t.startsAt}`),
+    check("events_kind_ck", oneOf(t.kind, EVENT_KINDS)),
     index("events_starts_idx").on(t.startsAt),
   ],
 );
@@ -227,6 +237,9 @@ export const eventRegistrations = sqliteTable(
     /** user ids on the roster for this event */
     roster: text("roster_json", { mode: "json" }).$type<string[]>().notNull().default([]),
     registeredBy: text("registered_by").references(() => users.id, { onDelete: "set null" }),
+    /** the team's shared notepad for this event */
+    notesMd: text("notes_md"),
+    notesUpdatedAt: integer("notes_updated_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.teamId] })],
@@ -250,11 +263,13 @@ export const challenges = sqliteTable(
     solvedAt: integer("solved_at", { mode: "timestamp_ms" }),
     notesMd: text("notes_md"),
     links: text("links_json", { mode: "json" }).$type<{ label: string; url: string }[]>().notNull().default([]),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
     updatedAt: updatedAt(),
   },
   (t) => [
     check("challenges_status_ck", oneOf(t.status, CHALLENGE_STATUSES)),
     index("challenges_board_idx").on(t.eventId, t.teamId),
+    uniqueIndex("challenges_name_uq").on(t.eventId, t.teamId, sql`lower(${t.name})`),
   ],
 );
 
