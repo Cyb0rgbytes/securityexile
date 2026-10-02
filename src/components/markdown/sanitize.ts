@@ -7,8 +7,15 @@ export interface DOMPurifyLike {
   removeHook(name: "afterSanitizeAttributes"): unknown;
 }
 
-// Raw HTML in notes is never rendered; markdown syntax only.
-const md = new Marked({ gfm: true, breaks: true, renderer: { html: () => "" } });
+const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Raw HTML in notes is never rendered as HTML: it's shown as text (blocks as code),
+// so pasted payloads stay readable and inert instead of silently disappearing.
+const md = new Marked({
+  gfm: true,
+  breaks: true,
+  renderer: { html: ({ text, block }) => (block ? `<pre><code>${escapeHtml(text.trimEnd())}</code></pre>\n` : escapeHtml(text)) },
+});
 
 const ALLOWED_TAGS = ["p", "br", "strong", "em", "del", "code", "pre", "blockquote", "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "hr", "table", "thead", "tbody", "tr", "th", "td"];
 

@@ -8,6 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
 import { getEnv } from "@/lib/db/client";
+import { isUniqueViolation } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { challenges, eventRegistrations, users } from "@/lib/db/schema";
 import { MOVES, nextStatus, type Move } from "@/lib/events/permissions";
@@ -19,7 +20,6 @@ import type { ActionState } from "@/app/teams/actions";
 export type NotesState = ActionState & { savedAt?: number };
 
 const firstIssue = (e: { issues: { message: string }[] }) => e.issues[0]?.message ?? "Invalid input.";
-const isUnique = (e: unknown) => String(e).includes("UNIQUE");
 const idOk = (id: string) => /^[0-9A-Z]{26}$/.test(id);
 /** Rows changed by a D1 write. */
 const changes = (res: unknown) => (res as { meta: { changes: number } }).meta.changes;
@@ -49,7 +49,7 @@ export async function addChallenge(slug: string, _prev: ActionState, form: FormD
       createdBy: member.id,
     });
   } catch (e) {
-    if (isUnique(e)) return { error: "Your team already has a challenge with that name.", fields };
+    if (isUniqueViolation(e, "challenges_name_uq")) return { error: "Your team already has a challenge with that name.", fields };
     throw e;
   }
   revalidatePath(`/events/${event.slug}/war-room`);

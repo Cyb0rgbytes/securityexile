@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { getMember } from "@/lib/auth/member";
 import { getDb } from "@/lib/db/client";
+import { isUniqueViolation } from "@/lib/db/errors";
 import { users } from "@/lib/db/schema";
 import { handleSchema } from "@/lib/validation/handle";
 
@@ -36,7 +37,7 @@ export async function claimHandle(_prev: ClaimHandleState, form: FormData): Prom
       .where(and(eq(users.id, member.id), isNull(users.handle)));
   } catch (e) {
     // The UNIQUE constraint is the real guard against a concurrent claim.
-    if (String(e).includes("UNIQUE")) return { error: "That handle is taken.", value: raw };
+    if (isUniqueViolation(e, "users.handle")) return { error: "That handle is taken.", value: raw };
     throw e;
   }
 
