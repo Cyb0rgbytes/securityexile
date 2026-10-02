@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { requireMember, type OnboardedMember } from "@/lib/auth/member";
 import { getDb, getEnv, getSecret, type Db } from "@/lib/db/client";
+import { isUniqueViolation as isUnique } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { auditLog, inviteCodes, inviteRedemptions, joinRequests, teamMembers, teams, users } from "@/lib/db/schema";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
@@ -40,7 +41,6 @@ export interface ActionState {
 }
 
 const firstIssue = (e: { issues: { message: string }[] }) => e.issues[0]?.message ?? "Invalid input.";
-const isUnique = (e: unknown, col: string) => String(e).includes("UNIQUE") && String(e).includes(col);
 
 function revalidateTeam(tag: string) {
   revalidatePath("/teams");

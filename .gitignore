@@ -54,3 +54,10 @@ next-env.d.ts
 # clerk keyless / local secrets
 .clerk/
 !.dev.vars.example
+
+# owner's private planning docs
+/Guidance/
+/Guidance.zip
+
+# superpowers plan workspaces (scratch)
+/.superpowers/
