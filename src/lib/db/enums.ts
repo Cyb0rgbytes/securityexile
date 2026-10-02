@@ -9,3 +9,4 @@ export const CHALLENGE_STATUSES = ["open", "claimed", "solving", "solved"] as co
 export const DIFFICULTIES = ["beginner", "easy", "medium", "hard", "insane"] as const;
 export const EVENT_KINDS = ["ctf", "community"] as const;
 export const PLATFORM_ROLES = ["member", "moderator", "admin"] as const;
+export const UPLOAD_MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;

@@ -41,7 +41,16 @@
       "binding": "KV",
       "id": "5cb48d99a6a448839d30b61a30cd6bf9"
     }
-  ]
-
-  // Phase 5 adds: "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "security-exile-uploads" }]
+  ],
+  "r2_buckets": [
+    {
+      // Writeup images; served publicly from files.securityexile.com (R2 custom domain).
+      "binding": "UPLOADS",
+      "bucket_name": "security-exile-uploads"
+    }
+  ],
+  "vars": {
+    // Public origin for uploaded files. next dev ignores it and uses /dev-files (see src/lib/writeups/files.ts).
+    "FILES_ORIGIN": "https://files.securityexile.com"
+  }
 }
