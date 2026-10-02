@@ -11,7 +11,7 @@ import { requireMember } from "@/lib/auth/member";
 import { isStaff } from "@/lib/auth/platform";
 import { getDb, getEnv, type Db } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
-import { auditLog, challenges, eventRegistrations, events, teamMembers } from "@/lib/db/schema";
+import { auditLog, challenges, eventRegistrations, events, teamMembers, writeups } from "@/lib/db/schema";
 import { actorFor, type EventViewer } from "@/lib/events/context";
 import { canEvent, deleteAllowed, type EventAction } from "@/lib/events/permissions";
 import { findEventBySlug, findRegistration } from "@/lib/events/queries";
@@ -129,6 +129,8 @@ export async function updateEvent(slug: string, _prev: ActionState, form: FormDa
     if (windowError) return { error: windowError };
     await db.batch([
       db.update(events).set({ url: parsed.data.url || null, endsAt: parsed.data.endsAt }).where(eq(events.id, event.id)),
+      // Writeups tied to this event stay spoiler-locked until its (new) end.
+      db.update(writeups).set({ spoilerUntil: parsed.data.endsAt }).where(eq(writeups.eventId, event.id)),
       db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.update", targetId: event.id, meta: { title: event.title } })),
     ]);
   } else {
@@ -142,6 +144,7 @@ export async function updateEvent(slug: string, _prev: ActionState, form: FormDa
         .update(events)
         .set({ title: v.title, kind: v.kind, format: v.format || null, url: v.url || null, description: v.description || null, startsAt: v.startsAt, endsAt: v.endsAt })
         .where(eq(events.id, event.id)),
+      db.update(writeups).set({ spoilerUntil: v.endsAt }).where(eq(writeups.eventId, event.id)),
       db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.update", targetId: event.id, meta: { title: v.title } })),
     ]);
   }
@@ -161,6 +164,8 @@ export async function deleteEvent(slug: string, _prev: ActionState, form: FormDa
   if (!deleteAllowed(eventPhase(event, Date.now()), others))
     return { error: "Events can only be deleted before they start and before other teams register." };
   await db.batch([
+    // event_id becomes null via the FK; drop the lock with it.
+    db.update(writeups).set({ spoilerUntil: null }).where(eq(writeups.eventId, event.id)),
     db.delete(events).where(eq(events.id, event.id)),
     db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.delete", targetId: event.id, meta: { title: event.title } })),
   ]);

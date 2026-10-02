@@ -24,7 +24,14 @@ export type AuditAction =
   | "event.unhide"
   | "event.register"
   | "event.unregister"
-  | "event.roster";
+  | "event.roster"
+  | "writeup.publish"
+  | "writeup.unpublish"
+  | "writeup.delete"
+  | "writeup.hide"
+  | "writeup.unhide"
+  | "comment.hide"
+  | "comment.unhide";
 
 /**
  * Builds an audit_log row. Returned (not inserted) so callers can put the
@@ -75,6 +82,13 @@ export function describeAudit(action: string, actor: string | null, meta: Record
     case "event.register": return `${who} registered the team for ${m.title ?? "an event"}`;
     case "event.unregister": return `${who} withdrew the team from ${m.title ?? "an event"}`;
     case "event.roster": return `${who} updated the roster for ${m.title ?? "an event"}`;
+    case "writeup.publish": return `${who} published ${m.title ?? "a writeup"}`;
+    case "writeup.unpublish": return `${who} unpublished ${m.title ?? "a writeup"}`;
+    case "writeup.delete": return `${who} deleted ${m.title ?? "a writeup"}`;
+    case "writeup.hide": return `${who} hid ${m.title ?? "a writeup"}`;
+    case "writeup.unhide": return `${who} restored ${m.title ?? "a writeup"}`;
+    case "comment.hide": return `${who} hid a comment`;
+    case "comment.unhide": return `${who} restored a comment`;
     default: return `${who}: ${action}`;
   }
 }
