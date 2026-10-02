@@ -50,3 +50,6 @@ next-env.d.ts
 
 # raw brand sources (large originals, not shipped)
 /brand-src
+
+# clerk keyless / local secrets
+.clerk/

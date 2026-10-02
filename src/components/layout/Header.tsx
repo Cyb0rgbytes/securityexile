@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GlitchText } from "@/components/fx/GlitchText";
 import { Kbd } from "@/components/ui/Kbd";
 import { FxToggle } from "./FxToggle";
+import { AuthControls } from "./AuthControls";
 
 const NAV = [
   { href: "/writeups", label: "writeups" },
@@ -48,6 +49,7 @@ export function Header() {
             <Kbd>K</Kbd>
           </span>
           <FxToggle />
+          <AuthControls />
         </div>
       </div>
     </header>

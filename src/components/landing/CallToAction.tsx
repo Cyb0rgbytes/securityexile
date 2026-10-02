@@ -19,7 +19,7 @@ export function CallToAction() {
           Sign in with Discord or GitHub, claim a handle, and your dossier starts filling in.
         </p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-          <NeonButton href="/sign-in" variant="danger">
+          <NeonButton href="/sign-up" variant="danger">
             create account
           </NeonButton>
           <NeonButton href="/writeups" variant="ghost">

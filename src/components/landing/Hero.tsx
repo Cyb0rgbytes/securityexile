@@ -35,7 +35,7 @@ export function Hero() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <NeonButton href="/writeups">browse writeups</NeonButton>
-          <NeonButton href="/sign-in" variant="ghost">
+          <NeonButton href="/sign-up" variant="ghost">
             join the community
           </NeonButton>
         </div>

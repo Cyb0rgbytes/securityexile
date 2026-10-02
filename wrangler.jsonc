@@ -14,10 +14,26 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "security-exile"
     }
+  ],
+
+  // Real Cloudflare resources (created 2026-10-02; D1 is in the EU jurisdiction).
+  // `next dev` and `wrangler --local` still use local copies in .wrangler/state;
+  // only `--remote` commands and deployments touch these.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "security-exile",
+      "database_id": "7a1e806d-7208-4e3e-8c59-7c3f6f6dd43b",
+      "migrations_dir": "drizzle/migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      // rate limits + cache
+      "binding": "KV",
+      "id": "5cb48d99a6a448839d30b61a30cd6bf9"
+    }
   ]
 
-  // Phase 2 adds (after approval; creating them is a paid/irreversible step):
-  //   "d1_databases": [{ "binding": "DB", "database_name": "security-exile", "database_id": "…" }],
-  //   "kv_namespaces": [{ "binding": "KV", "id": "…" }],
-  //   "r2_buckets":   [{ "binding": "UPLOADS", "bucket_name": "security-exile-uploads" }]
+  // Phase 5 adds: "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "security-exile-uploads" }]
 }

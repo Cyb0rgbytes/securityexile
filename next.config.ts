@@ -7,13 +7,20 @@ const isDev = process.env.NODE_ENV === "development";
  * so without nonces 'unsafe-inline' is required for script-src. Phase 7 moves
  * to a nonce-based policy via proxy.ts and drops it.
  */
+// Clerk: Frontend API (dev instances live on *.clerk.accounts.dev; the
+// production custom domain is added at deploy), avatars on img.clerk.com,
+// and Cloudflare Turnstile for bot protection on sign-up.
+const CLERK_FAPI = "https://*.clerk.accounts.dev";
+const TURNSTILE = "https://challenges.cloudflare.com";
+
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${CLERK_FAPI} ${TURNSTILE}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
+  "img-src 'self' blob: data: https://img.clerk.com",
   "font-src 'self'",
-  `connect-src 'self'${isDev ? " ws:" : ""}`,
+  `connect-src 'self'${isDev ? " ws:" : ""} ${CLERK_FAPI}`,
+  `frame-src ${TURNSTILE}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

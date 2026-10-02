@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { clerkAppearance } from "@/lib/auth/appearance";
 import { FxProvider } from "@/lib/fx/FxProvider";
 import { fxInitScript } from "@/lib/fx/init-script";
 import { BackgroundVideo } from "@/components/fx/BackgroundVideo";
@@ -48,16 +50,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: fxInitScript }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <FxProvider>
-          <SkipLink />
-          <BackgroundVideo />
-          <Header />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <div aria-hidden="true" className="grain" />
-        </FxProvider>
+        {/* telemetry off: members' browsers shouldn't report to a third party, and CSP blocks it anyway */}
+        <ClerkProvider appearance={clerkAppearance} signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
+          <FxProvider>
+            <SkipLink />
+            <BackgroundVideo />
+            <Header />
+            <main id="main" className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <div aria-hidden="true" className="grain" />
+          </FxProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
