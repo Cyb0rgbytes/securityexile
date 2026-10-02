@@ -28,6 +28,11 @@ export const LIMITS = {
   eventCreate: { max: 3, windowSec: 86_400 },
   challengeCreate: { max: 60, windowSec: 3600 },
   warRoomWrite: { max: 300, windowSec: 3600 },
+  writeupPublish: { max: 5, windowSec: 86_400 },
+  voteBookmark: { max: 60, windowSec: 3600 },
+  comment: { max: 20, windowSec: 3600 },
+  upload: { max: 20, windowSec: 3600 },
+  preview: { max: 120, windowSec: 3600 },
 } as const satisfies Record<string, Limit>;
 
 export interface RateResult {

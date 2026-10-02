@@ -53,3 +53,13 @@ describe("Phase 4 limits", () => {
     expect(LIMITS.warRoomWrite).toEqual({ max: 300, windowSec: 3600 });
   });
 });
+
+describe("Phase 5 limits", () => {
+  it("match the spec", () => {
+    expect(LIMITS.writeupPublish).toEqual({ max: 5, windowSec: 86_400 });
+    expect(LIMITS.voteBookmark).toEqual({ max: 60, windowSec: 3600 });
+    expect(LIMITS.comment).toEqual({ max: 20, windowSec: 3600 });
+    expect(LIMITS.upload).toEqual({ max: 20, windowSec: 3600 });
+    expect(LIMITS.preview).toEqual({ max: 120, windowSec: 3600 });
+  });
+});
