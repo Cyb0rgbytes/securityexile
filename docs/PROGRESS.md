@@ -6,10 +6,12 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 
 | Phase | State | Commit |
 |---|---|---|
-| 1. Scaffold, design system, layout, landing | Done | `b116e96` |
-| 1b. Rebrand around community crest + background loop, copy reframed | Done | `ef68dc3` |
+| 1. Scaffold, design system, layout, landing | Done | `3be428b` |
+| 1b. Rebrand around community crest + background loop, copy reframed | Done | `33cbb9a` |
 | 2. Auth + DB schema | Not started (needs approvals, see below) | |
 | 3–7 | Not started | |
+
+Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
 
 Runs locally with `npm run build && npm run start -- --port 3000`. Nothing is deployed; no Cloudflare resources or third-party accounts have been created.
 
