@@ -24,7 +24,7 @@ export default async function TeamsPage() {
           <p className="font-mono text-sm text-green">
             <span aria-hidden="true">$ </span>ls teams/
           </p>
-          <h1 className="mt-2 font-mono text-3xl font-bold text-fg">Teams</h1>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg">Teams</h1>
           <p className="mt-2 max-w-xl text-fg-muted">Study groups and competition crews. Each member belongs to one team.</p>
         </div>
         <div className="flex flex-wrap gap-3">

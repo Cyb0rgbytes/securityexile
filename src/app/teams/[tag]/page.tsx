@@ -51,7 +51,7 @@ export default async function TeamPage({ params }: Props) {
       <GlassPanel glow className="mt-6 flex flex-col gap-6 p-6 sm:flex-row sm:items-center">
         <EmblemBadge emblem={team.logoKey} size={112} />
         <div className="min-w-0 flex-1">
-          <h1 className="font-mono text-3xl font-bold text-fg">{team.name}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{team.name}</h1>
           <p className="mt-1 font-mono text-sm text-green">[{team.tag}]</p>
           <p className="mt-3 font-mono text-xs text-fg-muted">
             {roster.length} {roster.length === 1 ? "member" : "members"} · {JOIN_MODE_LABEL[team.joinMode]} · since{" "}
@@ -78,7 +78,7 @@ export default async function TeamPage({ params }: Props) {
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <section aria-labelledby="roster-h">
-          <h2 id="roster-h" className="font-mono text-lg font-bold text-fg">
+          <h2 id="roster-h" className="font-display text-lg font-semibold tracking-tight text-fg">
             roster/
           </h2>
           <ul className="mt-4 divide-y divide-line rounded-lg border border-line">

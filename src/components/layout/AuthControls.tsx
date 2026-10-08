@@ -3,9 +3,9 @@
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
 const ghost =
-  "whitespace-nowrap rounded border border-line-strong px-3 py-1 font-mono text-xs text-fg transition-colors hover:border-green-bright hover:text-green-bright";
+  "notch notch-sm whitespace-nowrap px-3 py-1.5 font-display text-xs font-semibold text-fg shadow-[inset_0_0_0_1px_var(--se-line-strong)] transition-[color,box-shadow] hover:text-green-bright hover:shadow-[inset_0_0_0_1px_var(--se-green-bright)]";
 const solid =
-  "whitespace-nowrap rounded bg-green px-3 py-1 font-mono text-xs font-semibold text-bg-deep transition-colors hover:bg-green-bright";
+  "notch notch-sm glint whitespace-nowrap bg-green px-3 py-1.5 font-display text-xs font-semibold text-bg-deep transition-colors hover:bg-green-bright";
 
 function DossierIcon() {
   return (

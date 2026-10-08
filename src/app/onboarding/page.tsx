@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
 
   return (
     <AuthShell command="passwd --set-handle">
-      <h1 className="mb-6 self-start font-mono text-2xl font-bold text-fg">Pick your handle</h1>
+      <h1 className="mb-6 self-start font-display text-2xl font-semibold tracking-tight text-fg">Pick your handle</h1>
       <HandleForm suggestion={suggestion} />
     </AuthShell>
   );

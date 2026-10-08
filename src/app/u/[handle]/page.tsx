@@ -64,7 +64,7 @@ export default async function DossierPage({ params }: Props) {
           />
         )}
         <div className="min-w-0">
-          <h1 className="truncate font-mono text-3xl font-bold text-fg">@{user.handle}</h1>
+          <h1 className="truncate font-display text-3xl font-semibold tracking-tight text-fg">@{user.handle}</h1>
           {user.displayName && <p className="mt-1 text-fg-muted">{user.displayName}</p>}
           <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm">
             <div>
@@ -98,7 +98,7 @@ export default async function DossierPage({ params }: Props) {
       {user.bio && <p className="mt-6 max-w-2xl leading-relaxed text-fg-muted">{user.bio}</p>}
 
       <section aria-labelledby="writeups-h" className="mt-10">
-        <h2 id="writeups-h" className="font-mono text-lg font-bold text-fg">
+        <h2 id="writeups-h" className="font-display text-lg font-semibold tracking-tight text-fg">
           writeups/
         </h2>
         {theirs.length > 0 ? (

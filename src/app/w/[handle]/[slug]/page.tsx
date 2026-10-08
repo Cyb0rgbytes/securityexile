@@ -85,7 +85,7 @@ export default async function WriteupPage({ params }: Props) {
         {[w.category, w.difficulty].filter(Boolean).join(" / ") || "writeup"} · {readMinutes(w.bodyMd)} min read
         {series && <> · series: <Link href={`/w/${authorHandle}/series/${series.slug}`} className="hover:text-green-bright">{series.title}</Link>{w.seriesOrder ? ` (${w.seriesOrder})` : ""}</>}
       </p>
-      <h1 className="mt-2 font-mono text-3xl font-bold text-fg sm:text-4xl">{w.title}</h1>
+      <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">{w.title}</h1>
       <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-fg-muted">
         by <Link href={`/u/${authorHandle}`} className="text-fg hover:text-green-bright">@{authorHandle}</Link>
         {team && <><EmblemBadge emblem={team.logoKey} size={18} /> <Link href={`/teams/${team.tag}`} className="hover:text-green-bright">{team.tag}</Link></>}

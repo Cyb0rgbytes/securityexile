@@ -17,7 +17,7 @@ export default async function NewTeamPage() {
       <p className="font-mono text-sm text-green">
         <span aria-hidden="true">$ </span>mkdir teams/new
       </p>
-      <h1 className="mt-2 font-mono text-3xl font-bold text-fg">Create a team</h1>
+      <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg">Create a team</h1>
       <p className="mt-2 text-fg-muted">You&apos;ll be the captain. You can change everything later.</p>
       <div className="mt-8">
         <CreateTeamForm />

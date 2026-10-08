@@ -73,7 +73,7 @@ function Comment({ n, writeupId, depth, signedIn, staff }: { n: CommentNode; wri
 export function Comments({ writeupId, tree, signedIn, staff, open }: { writeupId: string; tree: CommentNode[]; signedIn: boolean; staff: boolean; open: boolean }) {
   return (
     <section aria-labelledby="comments-h" className="mt-12">
-      <h2 id="comments-h" className="font-mono text-lg font-bold text-fg">comments</h2>
+      <h2 id="comments-h" className="font-display text-lg font-semibold tracking-tight text-fg">comments</h2>
       {open && signedIn && <div className="mt-4"><CommentForm writeupId={writeupId} parentId={null} /></div>}
       {open && !signedIn && <p className="mt-4 text-sm text-fg-muted">Sign in to comment.</p>}
       {tree.length === 0 ? <p className="mt-4 text-sm text-fg-muted">No comments yet.</p> : (

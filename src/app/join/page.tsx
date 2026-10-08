@@ -15,7 +15,7 @@ export default async function JoinPage() {
 
   return (
     <AuthShell command="join --code">
-      <h1 className="mb-6 self-start font-mono text-2xl font-bold text-fg">Join with a code</h1>
+      <h1 className="mb-6 self-start font-display text-2xl font-semibold tracking-tight text-fg">Join with a code</h1>
       <JoinForm />
       <p className="mt-4 self-start text-sm text-fg-muted">Codes come from a team&apos;s captain or co-captain.</p>
     </AuthShell>

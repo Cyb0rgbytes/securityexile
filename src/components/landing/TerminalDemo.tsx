@@ -54,11 +54,11 @@ export function TerminalDemo() {
   return (
     <section aria-label="Terminal preview" className="mx-auto mt-16 max-w-3xl px-4 sm:px-6">
       <GlassPanel glow className="overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-green/80" />
-          <span className="ml-3 font-mono text-xs text-fg-muted">operator@exile: ~</span>
+        {/* Title bar drawn like a scabbard: a vermilion collar, then the lacquered body. */}
+        <div className="flex items-center gap-3 border-b border-line bg-[linear-gradient(90deg,rgb(242_65_46/0.14),transparent_40%)] px-4 py-2.5">
+          <span aria-hidden="true" className="h-3 w-1 -skew-x-[20deg] bg-red" />
+          <span aria-hidden="true" className="h-3 w-1 -skew-x-[20deg] bg-red/50" />
+          <span className="ml-1 font-mono text-xs text-fg-muted">operator@exile: ~</span>
           <span className="ml-auto font-mono text-[0.65rem] text-fg-muted">preview</span>
         </div>
         <pre className="overflow-x-auto p-5 font-mono text-sm leading-7">
