@@ -1,6 +1,6 @@
 # Security Exile — progress log
 
-Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
+Last updated: 2026-10-09. Spec lives in [`MD.md`](../MD.md).
 
 ## Status
 
@@ -13,6 +13,7 @@ Last updated: 2026-10-02. Spec lives in [`MD.md`](../MD.md).
 | — Early deploy to Cloudflare Workers | Live at https://app.securityexile.com | `bd95fa6`…`0a8cb86` |
 | 4. Events + war room | Live on app.securityexile.com (deployed 2026-10-02) | `cdac518` |
 | 5. Writeups | Built on branch `phase-5-writeups`; go-live waits for owner approval (R2 bucket, files domain, migration 0003) | see Phase 5 |
+| 5b. Redesign "cyber-shinobi" | Built on branch `design/cyber-shinobi` (on top of Phase 5); details and next steps in [`DESIGN.md`](DESIGN.md) | `7402a72` |
 | 6–7 | Not started | |
 
 Code: https://github.com/Cyb0rgbytes/securityexile (branch `main`). Commits use the GitHub no-reply email `34769900+Cyb0rgbytes@users.noreply.github.com` (set in this repo's git config) because the account blocks pushes that expose a private address.
@@ -151,7 +152,6 @@ Raw originals live in `brand-src/` (git-ignored, large). Shipped derivatives are
 ## Known gaps / TODO
 
 - `resolveFxLevel()` in `src/lib/fx/resolve.ts` is a placeholder policy (only honours the toggle and reduced motion). Open question for the owner: should explicit "full" beat OS reduced-motion; should low-memory devices / narrow phones default to low; should missing WebGL force low.
-- Hero stat strip shows "—" until real counts exist (Phase 2+).
 - `security.txt` and the disclosure page use placeholder domain/contact.
 - `/leaderboard` shows a "coming soon" page until Phase 6.
 - CSP keeps `'unsafe-inline'` for scripts until the Phase 7 nonce pass.
@@ -170,7 +170,7 @@ npm run dev                     # dev server (default :3000)
 npm run build && npm run start  # production build, local
 npm run typecheck && npm run lint
 node scripts/brand-assets.mjs   # regenerate logo derivatives
-bash scripts/encode-bg.sh       # regenerate background loops (ffmpeg)
+# background art: public/assets/bg/shinobi-* (see DESIGN.md; encode-bg.sh removed)
 npm run preview                 # OpenNext build + wrangler preview
 node scripts/seed-dev.mjs RISE --event   # local test data: members, requests, a live CTF
 node scripts/seed-dev.mjs --clean
