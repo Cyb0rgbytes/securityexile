@@ -5,7 +5,7 @@ import { getDb, getEnv } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
 import { uploads } from "@/lib/db/schema";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
-import { MAX_MEMBER_BYTES, MAX_UPLOAD_BYTES, readLimited, sniffImage, stripJpegMetadata } from "@/lib/uploads/sniff";
+import { MAX_MEMBER_BYTES, MAX_UPLOAD_BYTES, readLimited, sniffImage, stripMetadata } from "@/lib/uploads/sniff";
 import { filesOrigin } from "@/lib/writeups/files";
 
 const fail = (status: number, error: string) => NextResponse.json({ error }, { status });
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (declared > MAX_UPLOAD_BYTES) return fail(413, "Images can be at most 5 MB.");
 
   const env = getEnv();
-  const rl = await hit(env.KV, `upload:${member.id}`, LIMITS.upload);
+  const rl = await hit(env, `upload:${member.id}`, LIMITS.upload);
   if (!rl.ok) return fail(429, retryMessage(rl));
 
   // Counted while streaming: a body without Content-Length can't be buffered past the cap.
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (buf.byteLength === 0) return fail(400, "That file is empty.");
   const type = sniffImage(buf);
   if (!type) return fail(415, "Only PNG, JPEG, WebP and GIF images can be uploaded.");
-  const body = type.mime === "image/jpeg" ? stripJpegMetadata(buf) : buf;
+  const body = stripMetadata(buf, type);
 
   // Reserve the space with one conditional insert, so parallel uploads can't all pass the quota
   // check (KV rate limits aren't atomic). The R2 write happens only after the row exists.

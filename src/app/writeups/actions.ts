@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { requireMember } from "@/lib/auth/member";
 import { isStaff } from "@/lib/auth/platform";
@@ -72,7 +72,7 @@ export async function saveWriteup(id: string | null, _prev: SaveState, form: For
   }
 
   // Saves render up to 100 KB and write a large row: cap the rate, and the number of drafts.
-  const rl = await hit(getEnv().KV, `writeup-save:${member.id}`, LIMITS.writeupSave);
+  const rl = await hit(getEnv(), `writeup-save:${member.id}`, LIMITS.writeupSave);
   if (!rl.ok) return { error: retryMessage(rl) };
   if (!existing) {
     const [{ drafts }] = await db.select({ drafts: count() }).from(writeups).where(and(eq(writeups.authorId, member.id), isNull(writeups.publishedAt)));
@@ -138,7 +138,7 @@ export async function setPublished(id: string, publish: boolean): Promise<Action
   if (publish) {
     if (w.publishedAt) return { ok: "Already published." };
     if (w.bodyMd.trim().length < 20) return { error: "Write a little more before publishing (20+ characters)." };
-    const rl = await hit(getEnv().KV, `publish:${member.id}`, LIMITS.writeupPublish);
+    const rl = await hit(getEnv(), `publish:${member.id}`, LIMITS.writeupPublish);
     if (!rl.ok) return { error: retryMessage(rl) };
   }
   await db.batch([
@@ -156,10 +156,37 @@ export async function deleteWriteup(id: string, _prev: ActionState, form: FormDa
   const w = await findWriteupById(db, id);
   if (!w || !canEditWriteup(w, member.id)) return notFound;
   if (String(form.get("confirm") ?? "").trim() !== "delete") return { error: 'Type "delete" to confirm.' };
+  // Images this writeup used go with it, instead of staying public until the next sweep,
+  // unless another of the author's writeups still embeds them (uploads.writeup_id only
+  // records the last writeup saved with the image).
+  const images = await db
+    .select({ id: uploads.id, r2Key: uploads.r2Key })
+    .from(uploads)
+    .where(
+      and(
+        eq(uploads.writeupId, w.id),
+        eq(uploads.ownerId, member.id),
+        sql`not exists (select 1 from ${writeups} where ${writeups.authorId} = ${member.id} and ${writeups.id} <> ${w.id} and instr(${writeups.bodyMd}, ${uploads.id}) > 0)`,
+      ),
+    );
   await db.batch([
     db.delete(writeups).where(eq(writeups.id, w.id)),
-    db.insert(auditLog).values(auditEntry({ teamId: w.teamId, actorId: member.id, action: "writeup.delete", targetId: w.id, meta: { title: w.title } })),
+    ...chunk(images.map((i) => i.id), 90).map((part) => db.delete(uploads).where(inArray(uploads.id, part))),
+    // A draft was only ever visible to its author: its title must not land in the team's log.
+    db.insert(auditLog).values(
+      w.publishedAt
+        ? auditEntry({ teamId: w.teamId, actorId: member.id, action: "writeup.delete", targetId: w.id, meta: { title: w.title } })
+        : auditEntry({ teamId: null, actorId: member.id, action: "writeup.delete", targetId: w.id }),
+    ),
   ]);
+  if (images.length) {
+    try {
+      await getEnv().UPLOADS.delete(images.map((i) => i.r2Key));
+    } catch (e) {
+      // Rows are gone, so sweep-uploads.mjs won't see these keys; log them for a manual delete.
+      console.error("writeup delete: R2 cleanup failed", { keys: images.map((i) => i.r2Key), e });
+    }
+  }
   revalidateWriteups(member.handle, w.slug);
   redirect("/me/writeups");
 }
@@ -182,7 +209,7 @@ export async function setWriteupHidden(id: string, hidden: boolean): Promise<Act
 export async function previewMarkdown(md: string): Promise<{ html?: string; error?: string }> {
   const member = await requireMember();
   if (typeof md !== "string" || md.length > 100_000) return { error: "The writeup is over 100 000 characters." };
-  const rl = await hit(getEnv().KV, `preview:${member.id}`, LIMITS.preview);
+  const rl = await hit(getEnv(), `preview:${member.id}`, LIMITS.preview);
   if (!rl.ok) return { error: retryMessage(rl) };
   return { html: renderWriteup(md, { filesOrigin: filesOrigin() }) };
 }

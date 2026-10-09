@@ -47,15 +47,19 @@ export default async function WriteupPage({ params }: Props) {
   if (!r) notFound();
   const { db, viewer, now, w, authorHandle } = r;
   const staff = isStaff(viewer.platformRole);
-  const [tags, team, event, series, myVote, myMark, tree] = await Promise.all([
+  const [tags, team, linkedEvent, series, myVote, myMark, tree] = await Promise.all([
     tagsOf(db, w.id),
     w.teamId ? db.query.teams.findFirst({ columns: { tag: true, name: true, logoKey: true }, where: eq(teams.id, w.teamId) }) : null,
-    w.eventId ? db.query.events.findFirst({ columns: { slug: true, title: true, endsAt: true }, where: eq(events.id, w.eventId) }) : null,
+    w.eventId
+      ? db.query.events.findFirst({ columns: { slug: true, title: true, endsAt: true, hiddenAt: true, ownerTeamId: true }, where: eq(events.id, w.eventId) })
+      : null,
     w.seriesId ? db.query.writeupSeries.findFirst({ where: eq(writeupSeries.id, w.seriesId) }) : null,
     viewer.userId ? db.query.votes.findFirst({ where: and(eq(votes.writeupId, w.id), eq(votes.userId, viewer.userId)) }) : null,
     viewer.userId ? db.query.bookmarks.findFirst({ where: and(eq(bookmarks.writeupId, w.id), eq(bookmarks.userId, viewer.userId)) }) : null,
     loadCommentTree(db, w.id, { userId: viewer.userId, staff }, now),
   ]);
+  // Same rule as canSeeEvent: a hidden event's name only shows to staff and the team that added it.
+  const event = linkedEvent && (!linkedEvent.hiddenAt || staff || linkedEvent.ownerTeamId === viewer.teamId) ? linkedEvent : null;
   const toc = tocFromHtml(w.bodyHtml);
   // Neighbours in the series, filtered by the same list rule so locked parts don't leak.
   const parts = series

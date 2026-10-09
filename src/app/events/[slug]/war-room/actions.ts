@@ -25,7 +25,7 @@ const idOk = (id: string) => /^[0-9A-Z]{26}$/.test(id);
 const changes = (res: unknown) => (res as { meta: { changes: number } }).meta.changes;
 
 async function writeLimit(memberId: string) {
-  const rl = await hit(getEnv().KV, `war-write:${memberId}`, LIMITS.warRoomWrite);
+  const rl = await hit(getEnv(), `war-write:${memberId}`, LIMITS.warRoomWrite);
   return rl.ok ? null : retryMessage(rl);
 }
 
@@ -36,7 +36,7 @@ export async function addChallenge(slug: string, _prev: ActionState, form: FormD
   const fields = { name: String(form.get("name") ?? ""), points: String(form.get("points") ?? "") };
   const parsed = challengeInputSchema.safeParse({ ...fields, category: form.get("category") });
   if (!parsed.success) return { error: firstIssue(parsed.error), fields };
-  const rl = await hit(getEnv().KV, `chal-create:${member.id}`, LIMITS.challengeCreate);
+  const rl = await hit(getEnv(), `chal-create:${member.id}`, LIMITS.challengeCreate);
   if (!rl.ok) return { error: retryMessage(rl), fields };
   try {
     await db.insert(challenges).values({

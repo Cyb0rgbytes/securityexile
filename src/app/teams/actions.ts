@@ -9,9 +9,10 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { requireMember, type OnboardedMember } from "@/lib/auth/member";
 import { getDb, getEnv, getSecret, type Db } from "@/lib/db/client";
+import { TEAM_ROLES } from "@/lib/db/enums";
 import { isUniqueViolation as isUnique } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { auditLog, inviteCodes, inviteRedemptions, joinRequests, teamMembers, teams, users } from "@/lib/db/schema";
@@ -82,7 +83,7 @@ export async function createTeam(_prev: ActionState, form: FormData): Promise<Ac
   const db = getDb();
   if (await findMembershipOf(db, member.id)) return { error: "You're already in a team. Leave it before creating a new one.", fields };
 
-  const rl = await hit(getEnv().KV, `team-create:${member.id}`, LIMITS.teamCreate);
+  const rl = await hit(getEnv(), `team-create:${member.id}`, LIMITS.teamCreate);
   if (!rl.ok) return { error: retryMessage(rl), fields };
 
   const nameTaken = await db.query.teams.findFirst({ columns: { id: true }, where: sql`lower(${teams.name}) = lower(${input.name})` });
@@ -247,7 +248,7 @@ export async function requestToJoin(tag: string, _prev: ActionState, form: FormD
   const parsed = joinRequestSchema.safeParse({ message: form.get("message") ?? "" });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
-  const rl = await hit(getEnv().KV, `join-request:${member.id}`, LIMITS.joinRequest);
+  const rl = await hit(getEnv(), `join-request:${member.id}`, LIMITS.joinRequest);
   if (!rl.ok) return { error: retryMessage(rl) };
 
   try {
@@ -274,6 +275,8 @@ export async function cancelRequest(tag: string): Promise<void> {
 }
 
 export async function decideRequest(tag: string, requestId: string, decision: "approve" | "reject"): Promise<ActionState> {
+  // Action arguments come straight from the client: anything else must not fall through to "approve".
+  if (decision !== "approve" && decision !== "reject") return { error: "Invalid decision." };
   const ctx = await authorize(tag, "request.decide");
   if ("error" in ctx) return { error: ctx.error };
   const { db, team, member } = ctx;
@@ -295,9 +298,16 @@ export async function decideRequest(tag: string, requestId: string, decision: "a
   }
 
   if (team.joinMode === "closed") return { error: "The team is closed. Change the join mode to accept members." };
+  // Claim the request first: a concurrent approval loses here instead of tripping
+  // the one-team index below and being reported as "joined another team".
+  const claimed = await db
+    .update(joinRequests)
+    .set(decided)
+    .where(and(eq(joinRequests.id, req.id), eq(joinRequests.status, "pending")))
+    .returning({ id: joinRequests.id });
+  if (claimed.length === 0) return { error: "That request is no longer pending." };
   try {
     await db.batch([
-      db.update(joinRequests).set(decided).where(eq(joinRequests.id, req.id)),
       db.insert(teamMembers).values({ teamId: team.id, userId: req.userId, role: "member" }),
       // They're in a team now; their requests elsewhere are moot.
       db.delete(joinRequests).where(and(eq(joinRequests.userId, req.userId), eq(joinRequests.status, "pending"))),
@@ -310,6 +320,8 @@ export async function decideRequest(tag: string, requestId: string, decision: "a
       revalidateTeam(team.tag);
       return { error: `@${target?.handle ?? "they"} already joined another team.` };
     }
+    // Unexpected failure: reopen the request so it can be decided again.
+    await db.update(joinRequests).set({ status: "pending", decidedBy: null, decidedAt: null }).where(eq(joinRequests.id, req.id));
     throw e;
   }
   revalidateTeam(team.tag);
@@ -353,8 +365,11 @@ export async function kickMember(tag: string, userId: string, _prev: ActionState
   if (!can(base.role, "member.kick", target.role)) return { error: "You don't have permission to do that." };
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== target.handle) return { error: `Type ${target.handle} to confirm.` };
   const { db, team, member } = base;
+  // Re-check the role in the delete itself: a promotion landing between the check
+  // above and here must not let a co-captain remove a fellow co-captain.
+  const kickable = TEAM_ROLES.filter((r) => can(base.role, "member.kick", r));
   await db.batch([
-    db.delete(teamMembers).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, userId), ne(teamMembers.role, "captain"))),
+    db.delete(teamMembers).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, userId), inArray(teamMembers.role, kickable))),
     db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "member.kick", targetId: userId, meta: { target: target.handle } })),
   ]);
   revalidateTeam(team.tag);
@@ -369,12 +384,20 @@ export async function transferCaptaincy(tag: string, userId: string, _prev: Acti
   if (!can(base.role, "captain.transfer", target.role)) return { error: "You don't have permission to do that." };
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== target.handle) return { error: `Type ${target.handle} to confirm.` };
   const { db, team, member } = base;
-  // Demote first, then promote: the one-captain index holds at every step.
-  await db.batch([
-    db.update(teamMembers).set({ role: "co_captain" }).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, member.id), eq(teamMembers.role, "captain"))),
-    db.update(teamMembers).set({ role: "captain" }).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, userId))),
-    db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "captain.transfer", targetId: userId, meta: { target: target.handle } })),
+  // Demote first, then promote: the one-captain index holds at every step. The batch
+  // is one transaction and the demote only runs while the target is still on the
+  // team, so a target leaving mid-request can't leave the team without a captain.
+  const targetStillHere = sql`exists (select 1 from ${teamMembers} where ${teamMembers.teamId} = ${team.id} and ${teamMembers.userId} = ${userId})`;
+  const [demoted] = await db.batch([
+    db
+      .update(teamMembers)
+      .set({ role: "co_captain" })
+      .where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, member.id), eq(teamMembers.role, "captain"), targetStillHere))
+      .returning({ userId: teamMembers.userId }),
+    db.update(teamMembers).set({ role: "captain" }).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, userId), sql`not exists (select 1 from ${teamMembers} where ${teamMembers.teamId} = ${team.id} and ${teamMembers.role} = 'captain')`)),
   ]);
+  if (demoted.length === 0) return { error: "That person isn't on the team any more." };
+  await db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "captain.transfer", targetId: userId, meta: { target: target.handle } }));
   revalidateTeam(team.tag);
   redirect(`/teams/${team.tag}`);
 }
@@ -402,10 +425,13 @@ export async function leaveTeam(tag: string, _prev: ActionState, form: FormData)
     redirect("/teams");
   }
 
-  await db.batch([
-    db.delete(teamMembers).where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, member.id))),
-    db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "member.leave" })),
-  ]);
+  // `role <> captain` in the delete: a captaincy handed over mid-request can't walk out.
+  const left = await db
+    .delete(teamMembers)
+    .where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, member.id), ne(teamMembers.role, "captain")))
+    .returning({ userId: teamMembers.userId });
+  if (left.length === 0) return { error: "Hand captaincy to someone first (Manage → Members)." };
+  await db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "member.leave" }));
   revalidateTeam(team.tag);
   redirect(`/teams/${team.tag}`);
 }
@@ -427,8 +453,8 @@ export async function redeemInvite(_prev: ActionState, form: FormData): Promise<
   if (await findMembershipOf(db, member.id)) return { error: "You're already in a team. Leave it before joining another.", fields: { code: raw } };
 
   const [byUser, byIp] = await Promise.all([
-    hit(env.KV, `redeem:user:${member.id}`, LIMITS.inviteRedeemUser),
-    ipHash ? hit(env.KV, `redeem:ip:${ipHash}`, LIMITS.inviteRedeemIp) : Promise.resolve({ ok: true, remaining: 1, retryAfter: 0 }),
+    hit(env, `redeem:user:${member.id}`, LIMITS.inviteRedeemUser),
+    ipHash ? hit(env, `redeem:ip:${ipHash}`, LIMITS.inviteRedeemIp) : Promise.resolve({ ok: true, remaining: 1, retryAfter: 0 }),
   ]);
   const log = (inviteId: string | null, success: boolean) =>
     db.insert(inviteRedemptions).values({ id: newId(), inviteId, userId: member.id, ipHash, success });
@@ -491,6 +517,7 @@ export async function redeemInvite(_prev: ActionState, form: FormData): Promise<
 
 async function clientIp(): Promise<string | null> {
   const h = await headers();
-  // On Cloudflare this header is set by the edge and can't be spoofed by the client.
-  return h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  // Set by Cloudflare's edge and can't be spoofed by the client. No X-Forwarded-For
+  // fallback: that header is client-controlled and would let the IP limit be rotated.
+  return h.get("cf-connecting-ip");
 }
