@@ -1,4 +1,5 @@
 import { NeonButton } from "@/components/ui/NeonButton";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 
 export function CallToAction() {
   return (
@@ -21,6 +22,9 @@ export function CallToAction() {
             </NeonButton>
             <NeonButton href="/writeups" variant="ghost">
               Read a writeup
+            </NeonButton>
+            <NeonButton href={DISCORD_INVITE_URL} variant="ghost">
+              Join the Discord
             </NeonButton>
           </div>
         </div>
