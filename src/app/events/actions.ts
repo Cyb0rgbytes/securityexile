@@ -6,12 +6,12 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, gt, ne, sql } from "drizzle-orm";
 import { requireMember } from "@/lib/auth/member";
 import { isStaff } from "@/lib/auth/platform";
 import { getDb, getEnv, type Db } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
-import { auditLog, challenges, eventRegistrations, events, teamMembers } from "@/lib/db/schema";
+import { auditLog, challenges, eventRegistrations, events, teamMembers, writeups } from "@/lib/db/schema";
 import { actorFor, type EventViewer } from "@/lib/events/context";
 import { canEvent, deleteAllowed, type EventAction } from "@/lib/events/permissions";
 import { findEventBySlug, findRegistration } from "@/lib/events/queries";
@@ -23,6 +23,9 @@ import { findMembershipOf } from "@/lib/teams/queries";
 import type { ActionState } from "@/app/teams/actions";
 
 const firstIssue = (e: { issues: { message: string }[] }) => e.issues[0]?.message ?? "Invalid input.";
+
+/** Writeups linked to the event whose spoiler lock hasn't lapsed yet. */
+const stillLocked = (eventId: string, now: number) => and(eq(writeups.eventId, eventId), gt(writeups.spoilerUntil, new Date(now)));
 
 function revalidateEvent(slug: string) {
   revalidatePath("/events");
@@ -88,7 +91,7 @@ export async function createEvent(_prev: ActionState, form: FormData): Promise<A
   const windowError = validateWindow(v.startsAt, v.endsAt, Date.now(), true);
   if (windowError) return { error: windowError, fields };
 
-  const rl = await hit(getEnv().KV, `event-create:${member.id}`, LIMITS.eventCreate);
+  const rl = await hit(getEnv(), `event-create:${member.id}`, LIMITS.eventCreate);
   if (!rl.ok) return { error: retryMessage(rl), fields };
 
   const id = newId();
@@ -129,6 +132,9 @@ export async function updateEvent(slug: string, _prev: ActionState, form: FormDa
     if (windowError) return { error: windowError };
     await db.batch([
       db.update(events).set({ url: parsed.data.url || null, endsAt: parsed.data.endsAt }).where(eq(events.id, event.id)),
+      // Writeups tied to this event stay spoiler-locked until its (new) end. Only rows that
+      // are still locked move: an event owner must not re-lock other authors' readable writeups.
+      db.update(writeups).set({ spoilerUntil: parsed.data.endsAt }).where(stillLocked(event.id, now)),
       db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.update", targetId: event.id, meta: { title: event.title } })),
     ]);
   } else {
@@ -142,6 +148,7 @@ export async function updateEvent(slug: string, _prev: ActionState, form: FormDa
         .update(events)
         .set({ title: v.title, kind: v.kind, format: v.format || null, url: v.url || null, description: v.description || null, startsAt: v.startsAt, endsAt: v.endsAt })
         .where(eq(events.id, event.id)),
+      db.update(writeups).set({ spoilerUntil: v.endsAt }).where(stillLocked(event.id, now)),
       db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.update", targetId: event.id, meta: { title: v.title } })),
     ]);
   }
@@ -160,10 +167,16 @@ export async function deleteEvent(slug: string, _prev: ActionState, form: FormDa
     .where(and(eq(eventRegistrations.eventId, event.id), ne(eventRegistrations.teamId, viewer.team!.id)));
   if (!deleteAllowed(eventPhase(event, Date.now()), others))
     return { error: "Events can only be deleted before they start and before other teams register." };
-  await db.batch([
-    db.delete(events).where(eq(events.id, event.id)),
-    db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.delete", targetId: event.id, meta: { title: event.title } })),
+  // Every write re-checks "no other team registered", in one transaction, so a
+  // registration landing after the count above can't be wiped by the cascade.
+  const noOthers = sql`not exists (select 1 from ${eventRegistrations} where ${eventRegistrations.eventId} = ${event.id} and ${eventRegistrations.teamId} <> ${viewer.team!.id})`;
+  const [, deleted] = await db.batch([
+    // event_id becomes null via the FK; drop the lock with it.
+    db.update(writeups).set({ spoilerUntil: null }).where(and(eq(writeups.eventId, event.id), noOthers)),
+    db.delete(events).where(and(eq(events.id, event.id), noOthers)).returning({ id: events.id }),
   ]);
+  if (deleted.length === 0) return { error: "Events can only be deleted before they start and before other teams register." };
+  await db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.delete", targetId: event.id, meta: { title: event.title } }));
   revalidatePath("/events");
   redirect("/events");
 }

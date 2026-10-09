@@ -19,6 +19,9 @@ import { findEventBySlug, listRegisteredTeams } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { slugParamSchema } from "@/lib/events/validation";
 import { listRoster } from "@/lib/teams/queries";
+import { WriteupCard } from "@/components/writeups/WriteupCard";
+import { listWriteups } from "@/lib/writeups/queries";
+import { loadWriteupViewer } from "@/lib/writeups/viewer";
 import { DeleteEventForm, HideToggle, RegisterButton, RosterForm, UnregisterForm } from "./EventActions";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -41,6 +44,8 @@ export default async function EventPage({ params }: Props) {
   const actor = actorFor(viewer, event);
   const regOpen = registrationOpen(event, now);
   const registered = event.kind === "ctf" ? await listRegisteredTeams(db, event.id) : [];
+  // listWriteups applies the spoiler lock: outsiders see nothing until the event ends.
+  const eventWriteups = await listWriteups(db, { viewer: await loadWriteupViewer(db), now: new Date(now), tab: "top", eventId: event.id, limit: 20 });
   const mine = viewer.team ? registered.find((r) => r.teamId === viewer.team!.id) : undefined;
   const othersRegistered = registered.filter((r) => r.teamId !== viewer.team?.id).length;
   const canRoster = !!mine && canEvent(actor, "event.roster");
@@ -116,6 +121,19 @@ export default async function EventPage({ params }: Props) {
           )}
         </section>
       )}
+
+      <section className="mt-10">
+        <h2 className="font-mono text-green">writeups ({eventWriteups.length})</h2>
+        {eventWriteups.length === 0 ? (
+          <p className="mt-3 text-sm text-fg-muted">{phase === "past" ? "No writeups yet." : "Writeups appear here after the event ends."}</p>
+        ) : (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {eventWriteups.map((w) => (
+              <WriteupCard key={w.id} w={w} now={now} />
+            ))}
+          </div>
+        )}
+      </section>
     </article>
   );
 }

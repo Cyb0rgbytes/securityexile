@@ -16,13 +16,13 @@ const sizes: Record<Level, string> = {
   3: "text-lg sm:text-xl",
 };
 
-/** Monospace heading with a blinking terminal cursor. */
+/** Display heading with a mono prompt and a blinking vermilion cursor. */
 export function CursorHeading({ level = 2, children, prompt, className = "" }: Props) {
   const Tag = `h${level}` as const;
   return (
-    <Tag className={`cursor-blink font-mono font-bold tracking-tight text-fg ${sizes[level]} ${className}`}>
+    <Tag className={`cursor-blink font-display font-semibold tracking-tight text-fg ${sizes[level]} ${className}`}>
       {prompt && (
-        <span aria-hidden="true" className="mr-2 text-green">
+        <span aria-hidden="true" className="mr-2 font-mono text-[0.7em] font-normal text-green">
           {prompt}
         </span>
       )}

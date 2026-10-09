@@ -20,7 +20,7 @@ const when = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "sh
 function Panel({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="glass bracketed p-6">
-      <h2 id={id} className="font-mono text-lg font-bold text-fg">
+      <h2 id={id} className="font-display text-lg font-semibold tracking-tight text-fg">
         {title}
       </h2>
       <div className="mt-5">{children}</div>
@@ -55,7 +55,7 @@ export default async function ManageTeamPage({ params }: Props) {
           <p className="font-mono text-sm text-green">
             <span aria-hidden="true">$ </span>sudo -u {role?.replace("_", "-")} manage {team.tag}
           </p>
-          <h1 className="font-mono text-2xl font-bold text-fg">{team.name}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-fg">{team.name}</h1>
         </div>
         <Link href={`/teams/${team.tag}`} className="ml-auto font-mono text-sm text-fg-muted hover:text-green-bright">
           ← back to team

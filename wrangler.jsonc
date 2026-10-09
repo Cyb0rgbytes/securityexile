@@ -41,7 +41,23 @@
       "binding": "KV",
       "id": "5cb48d99a6a448839d30b61a30cd6bf9"
     }
-  ]
-
-  // Phase 5 adds: "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "security-exile-uploads" }]
+  ],
+  // Workers Rate Limiting: atomic per Cloudflare location, so parallel requests
+  // can't race past a limit the way they can with the KV read-then-write counter.
+  // Used as a burst guard in front of the KV windows (see src/lib/security/rate-limit.ts).
+  "ratelimits": [
+    { "name": "RL_STRICT", "namespace_id": "1001", "simple": { "limit": 3, "period": 10 } },
+    { "name": "RL_BURST", "namespace_id": "1002", "simple": { "limit": 10, "period": 10 } }
+  ],
+  "r2_buckets": [
+    {
+      // Writeup images; served publicly from files.securityexile.com (R2 custom domain).
+      "binding": "UPLOADS",
+      "bucket_name": "security-exile-uploads"
+    }
+  ],
+  "vars": {
+    // Public origin for uploaded files. next dev ignores it and uses /dev-files (see src/lib/writeups/files.ts).
+    "FILES_ORIGIN": "https://files.securityexile.com"
+  }
 }

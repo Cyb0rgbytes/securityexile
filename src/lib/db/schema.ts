@@ -23,8 +23,8 @@ import {
 
 // ---------- shared enums (values live in ./enums so client code can import them) ----------
 
-import { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES } from "./enums";
-export { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES };
+import { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES, UPLOAD_MIMES } from "./enums";
+export { CHALLENGE_STATUSES, DIFFICULTIES, EVENT_KINDS, JOIN_MODES, PLATFORM_ROLES, RANK_TIERS, REQUEST_STATUSES, TEAM_ROLES, UPLOAD_MIMES };
 
 /** SQL `col IN ('a','b')` for a CHECK constraint built from a const tuple. */
 const oneOf = (column: AnySQLiteColumn, values: readonly string[]) =>
@@ -309,6 +309,11 @@ export const writeups = sqliteTable(
     /** null = draft */
     publishedAt: integer("published_at", { mode: "timestamp_ms" }),
     score: integer("score").notNull().default(0),
+    /** sanitized HTML rendered from body_md on every save (see src/lib/writeups/render.ts) */
+    bodyHtml: text("body_html").notNull().default(""),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    voteCount: integer("vote_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -317,6 +322,7 @@ export const writeups = sqliteTable(
     uniqueIndex("writeups_author_slug_uq").on(t.authorId, t.slug),
     index("writeups_published_idx").on(t.publishedAt),
     index("writeups_event_idx").on(t.eventId),
+    index("writeups_rank_idx").on(t.publishedAt, t.voteCount),
   ],
 );
 
@@ -343,6 +349,9 @@ export const comments = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     parentId: text("parent_id").references((): AnySQLiteColumn => comments.id, { onDelete: "cascade" }),
     bodyMd: text("body_md").notNull(),
+    bodyHtml: text("body_html").notNull().default(""),
+    editedAt: integer("edited_at", { mode: "timestamp_ms" }),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     /** soft delete keeps thread structure intact */
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
@@ -379,6 +388,27 @@ export const bookmarks = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.writeupId, t.userId] }), index("bookmarks_user_idx").on(t.userId)],
+);
+
+/** Images uploaded to R2 (bucket binding UPLOADS); writeup_id links them once used in a writeup. */
+export const uploads = sqliteTable(
+  "uploads",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    writeupId: text("writeup_id").references(() => writeups.id, { onDelete: "set null" }),
+    r2Key: text("r2_key").notNull().unique(),
+    mime: text("mime", { enum: UPLOAD_MIMES }).notNull(),
+    bytes: integer("bytes").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("uploads_mime_ck", oneOf(t.mime, UPLOAD_MIMES)),
+    check("uploads_bytes_ck", sql`${t.bytes} > 0`),
+    index("uploads_owner_idx").on(t.ownerId, t.createdAt),
+  ],
 );
 
 // ---------- gamification ----------

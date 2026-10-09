@@ -10,6 +10,10 @@ import Link from "next/link";
 import { findMembershipOf } from "@/lib/teams/queries";
 import { EmblemBadge } from "@/components/teams/EmblemBadge";
 import { RoleChip } from "@/components/teams/RoleChip";
+import { WriteupCard } from "@/components/writeups/WriteupCard";
+import { requestNow } from "@/lib/events/clock";
+import { listWriteups } from "@/lib/writeups/queries";
+import { loadWriteupViewer } from "@/lib/writeups/viewer";
 
 type Props = { params: Promise<{ handle: string }> };
 
@@ -34,7 +38,11 @@ export default async function DossierPage({ params }: Props) {
   const user = await findByHandle(handle);
   if (!user?.handle) notFound();
 
-  const [viewer, team] = await Promise.all([getMember(), findMembershipOf(getDb(), user.id)]);
+  const db = getDb();
+  const now = requestNow();
+  const [viewer, team, wv] = await Promise.all([getMember(), findMembershipOf(db, user.id), loadWriteupViewer(db)]);
+  // Same list rule as the library: drafts, hidden and spoiler-locked writeups never show here for outsiders.
+  const theirs = await listWriteups(db, { viewer: wv, now: new Date(now), tab: "newest", authorId: user.id, limit: 20 });
   const isSelf = viewer?.handle === user.handle;
 
   return (
@@ -56,7 +64,7 @@ export default async function DossierPage({ params }: Props) {
           />
         )}
         <div className="min-w-0">
-          <h1 className="truncate font-mono text-3xl font-bold text-fg">@{user.handle}</h1>
+          <h1 className="truncate font-display text-3xl font-semibold tracking-tight text-fg">@{user.handle}</h1>
           {user.displayName && <p className="mt-1 text-fg-muted">{user.displayName}</p>}
           <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm">
             <div>
@@ -90,23 +98,31 @@ export default async function DossierPage({ params }: Props) {
       {user.bio && <p className="mt-6 max-w-2xl leading-relaxed text-fg-muted">{user.bio}</p>}
 
       <section aria-labelledby="writeups-h" className="mt-10">
-        <h2 id="writeups-h" className="font-mono text-lg font-bold text-fg">
+        <h2 id="writeups-h" className="font-display text-lg font-semibold tracking-tight text-fg">
           writeups/
         </h2>
-        <div className="glass bracketed mt-4 p-6 text-sm text-fg-muted">
-          {isSelf ? (
-            <>
-              <p>No writeups yet. Your first one will show up here.</p>
-              <div className="mt-4">
-                <NeonButton href="/writeups" variant="ghost">
-                  browse writeups
-                </NeonButton>
-              </div>
-            </>
-          ) : (
-            <p>@{user.handle} hasn&apos;t published anything yet.</p>
-          )}
-        </div>
+        {theirs.length > 0 ? (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {theirs.map((w) => (
+              <WriteupCard key={w.id} w={w} now={now} />
+            ))}
+          </div>
+        ) : (
+          <div className="glass bracketed mt-4 p-6 text-sm text-fg-muted">
+            {isSelf ? (
+              <>
+                <p>No writeups yet. Share what you learned from your last challenge.</p>
+                <div className="mt-4">
+                  <NeonButton href="/writeups/new" variant="ghost">
+                    write your first writeup
+                  </NeonButton>
+                </div>
+              </>
+            ) : (
+              <p>@{user.handle} hasn&apos;t published anything yet.</p>
+            )}
+          </div>
+        )}
       </section>
     </article>
   );
