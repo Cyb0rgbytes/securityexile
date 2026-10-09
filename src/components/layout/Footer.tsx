@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 
 export function Footer() {
   return (
@@ -14,6 +15,11 @@ export function Footer() {
           </div>
         </div>
         <ul className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-fg-muted">
+          <li>
+            <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className="hover:text-green-bright">
+              Discord
+            </a>
+          </li>
           <li>
             <Link href="/security" className="hover:text-green-bright">
               Responsible disclosure
