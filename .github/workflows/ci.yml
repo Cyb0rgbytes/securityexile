@@ -4,6 +4,10 @@ on:
     branches: ["**"]
   pull_request:
 
+# Least privilege: the job only reads the repo, so the token can't write to it.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
