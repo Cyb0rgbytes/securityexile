@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono, Shippori_Mincho } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { clerkAppearance } from "@/lib/auth/appearance";
@@ -56,7 +57,9 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Per-request CSP nonce from src/proxy.ts; the inline script below only runs with it.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -66,11 +69,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         {/* Sets data-fx before first paint; see lib/fx/init-script.ts */}
-        <script dangerouslySetInnerHTML={{ __html: fxInitScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: fxInitScript }} />
       </head>
       <body className="flex min-h-full flex-col">
         {/* telemetry off: members' browsers shouldn't report to a third party, and CSP blocks it anyway */}
-        <ClerkProvider appearance={clerkAppearance} signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
+        <ClerkProvider nonce={nonce} appearance={clerkAppearance} signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
           <FxProvider>
             <SkipLink />
             <ShinobiBackdrop />
