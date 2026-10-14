@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { hostRedirect } from "@/lib/site/hosts";
 
 // Coarse gate: bounce signed-out visitors before rendering member pages.
 // The real authorization check lives in server code (requireMember and the
@@ -8,10 +9,10 @@ const isMemberRoute = createRouteMatcher(["/onboarding(.*)", "/settings(.*)"]);
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Clerk: Frontend API (dev instances live on *.clerk.accounts.dev; add the
-// production custom domain here if the /__clerk proxy isn't used), avatars on
+// Clerk: Frontend API (dev instances live on *.clerk.accounts.dev; the production
+// instance on clerk.securityexile.com, see docs/DOMAINS.md), avatars on
 // img.clerk.com, and Cloudflare Turnstile for bot protection on sign-up.
-const CLERK_FAPI = "https://*.clerk.accounts.dev";
+const CLERK_FAPI = "https://*.clerk.accounts.dev https://clerk.securityexile.com";
 const TURNSTILE = "https://challenges.cloudflare.com";
 const FILES = "https://files.securityexile.com";
 
@@ -52,6 +53,10 @@ function newNonce(): string {
 
 export default clerkMiddleware(
   async (auth, req) => {
+    // Apex = marketing, app = community (src/lib/site/hosts.ts). 308 keeps method and body.
+    const elsewhere = hostRedirect(req.nextUrl, { enabled: process.env.HOST_SPLIT === "on", signedIn: !!(await auth()).userId });
+    if (elsewhere) return NextResponse.redirect(elsewhere, 308);
+
     if (isMemberRoute(req)) await auth.protect();
 
     const nonce = newNonce();

@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono, Shippori_Mincho } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { clerkAppearance } from "@/lib/auth/appearance";
+import { SIGN_IN_URL, SIGN_UP_URL, usesAccountPortal } from "@/lib/auth/urls";
+import { APP_ORIGIN, SITE_ORIGIN } from "@/lib/site/hosts";
 import { FxProvider } from "@/lib/fx/FxProvider";
 import { fxInitScript } from "@/lib/fx/init-script";
 import { ShinobiBackdrop } from "@/components/fx/ShinobiBackdrop";
@@ -44,6 +46,8 @@ const shippori = Shippori_Mincho({
 });
 
 export const metadata: Metadata = {
+  // Absolute OG/canonical URLs resolve against the app host, where the shared pages live.
+  metadataBase: new URL(APP_ORIGIN),
   title: {
     default: "Security Exile — learn security by doing",
     template: "%s · Security Exile",
@@ -73,7 +77,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="flex min-h-full flex-col">
         {/* telemetry off: members' browsers shouldn't report to a third party, and CSP blocks it anyway */}
-        <ClerkProvider nonce={nonce} appearance={clerkAppearance} signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
+        {/* Account Portal in production: only our own hosts may be redirect targets after auth. */}
+        <ClerkProvider
+          nonce={nonce}
+          appearance={clerkAppearance}
+          signInUrl={SIGN_IN_URL}
+          signUpUrl={SIGN_UP_URL}
+          allowedRedirectOrigins={usesAccountPortal ? [APP_ORIGIN, SITE_ORIGIN] : undefined}
+          telemetry={false}
+        >
           <FxProvider>
             <SkipLink />
             <ShinobiBackdrop />

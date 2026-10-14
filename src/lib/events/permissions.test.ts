@@ -1,19 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { canEvent, deleteAllowed, MOVES, nextStatus, type ChallengeStatus } from "./permissions";
+import { canEvent, canHostAsTeam, deleteAllowed, MOVES, nextStatus, type ChallengeStatus } from "./permissions";
 
-const base = { teamRole: null, ownsEvent: false, platformRole: "member" } as const;
+const base = { teamRole: null, ownsEvent: false, platformRole: "member", ownsPersonal: false, isOrganizer: false } as const;
 
 describe("canEvent", () => {
-  it("captains and co-captains create events; members don't", () => {
+  it("every member can create events, with or without a team", () => {
     expect(canEvent({ ...base, teamRole: "captain" }, "event.create")).toBe(true);
-    expect(canEvent({ ...base, teamRole: "co_captain" }, "event.create")).toBe(true);
-    expect(canEvent({ ...base, teamRole: "member" }, "event.create")).toBe(false);
-    expect(canEvent(base, "event.create")).toBe(false);
+    expect(canEvent({ ...base, teamRole: "member" }, "event.create")).toBe(true);
+    expect(canEvent(base, "event.create")).toBe(true);
   });
-  it("only the owner team's leads edit or delete", () => {
+  it("only leads host as their team", () => {
+    expect(canHostAsTeam("captain")).toBe(true);
+    expect(canHostAsTeam("co_captain")).toBe(true);
+    expect(canHostAsTeam("member")).toBe(false);
+    expect(canHostAsTeam(null)).toBe(false);
+  });
+  it("only the owner team's leads edit or delete a team event", () => {
     expect(canEvent({ ...base, teamRole: "captain", ownsEvent: true }, "event.edit")).toBe(true);
     expect(canEvent({ ...base, teamRole: "captain", ownsEvent: false }, "event.edit")).toBe(false);
     expect(canEvent({ ...base, teamRole: "member", ownsEvent: true }, "event.delete")).toBe(false);
+  });
+  it("the creator of a personal event edits and deletes it", () => {
+    expect(canEvent({ ...base, ownsPersonal: true }, "event.edit")).toBe(true);
+    expect(canEvent({ ...base, ownsPersonal: true }, "event.delete")).toBe(true);
+    expect(canEvent({ ...base, ownsPersonal: true }, "event.register")).toBe(false);
+  });
+  it("organizers edit any event but get no team or moderation powers", () => {
+    expect(canEvent({ ...base, isOrganizer: true }, "event.edit")).toBe(true);
+    expect(canEvent({ ...base, isOrganizer: true }, "event.hide")).toBe(false);
+    expect(canEvent({ ...base, isOrganizer: true }, "event.roster")).toBe(false);
   });
   it("staff hide events, without team roles", () => {
     expect(canEvent({ ...base, platformRole: "moderator" }, "event.hide")).toBe(true);

@@ -16,7 +16,7 @@ export function WriteupCard({ w, now }: { w: ListedWriteup; now: number }) {
         <span>@{w.authorHandle}</span>
         {w.teamTag && <span className="inline-flex items-center gap-1"><EmblemBadge emblem={w.teamLogo} size={16} /> {w.teamTag}</span>}
         {w.tags.map((t) => <span key={t}>#{t}</span>)}
-        <span className="ml-auto">▲ {w.voteCount} · {w.commentCount} comments</span>
+        <span className="ml-auto">▲ {w.voteCount} · ♥ {w.heartCount} · {w.commentCount} comments</span>
       </div>
     </Link>
   );

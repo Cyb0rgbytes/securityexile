@@ -32,11 +32,15 @@ export function actorFor(v: EventViewer, e: EventRow | null): EventActor {
     teamRole: v.teamRole,
     ownsEvent: !!e && !!v.team && e.ownerTeamId === v.team.id,
     platformRole: v.member?.platformRole ?? "member",
+    ownsPersonal: !!e && !e.ownerTeamId && !!v.member && e.createdBy === v.member.id,
+    isOrganizer: !!v.member?.isOrganizer,
   };
 }
 
-/** Hidden events stay visible to moderators and to the team that added them. */
+/** Hidden events stay visible to moderators and to whoever added them (team, or the member for a personal event). */
 export function canSeeEvent(e: EventRow, v: EventViewer): boolean {
   if (!e.hiddenAt) return true;
-  return v.staff || (!!v.team && e.ownerTeamId === v.team.id);
+  if (v.staff) return true;
+  if (e.ownerTeamId) return !!v.team && e.ownerTeamId === v.team.id;
+  return !!v.member && e.createdBy === v.member.id;
 }

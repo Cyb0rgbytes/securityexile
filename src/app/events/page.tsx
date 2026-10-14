@@ -22,13 +22,13 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const db = getDb();
   const viewer = await loadViewer(db);
   const now = requestNow();
-  const rows = await listBoard(db, { includeHidden: viewer.staff || !!viewer.team, now });
+  const rows = await listBoard(db, { includeHidden: viewer.staff || !!viewer.member, now });
   const visible = rows.filter((r) => canSeeEvent(r.event, viewer)).map((r) => ({ ...r, phase: eventPhase(r.event, now) }));
   const counts = Object.fromEntries(TABS.map((t) => [t, visible.filter((r) => r.phase === t).length])) as Record<EventPhase, number>;
   const tab: EventPhase = TABS.includes(sp.tab as EventPhase) ? (sp.tab as EventPhase) : counts.live > 0 ? "live" : "upcoming";
   const kind = sp.kind === "ctf" || sp.kind === "community" ? sp.kind : null;
   const list = visible.filter((r) => r.phase === tab && (!kind || r.event.kind === kind));
-  const canCreate = canEvent(actorFor(viewer, null), "event.create");
+  const canCreate = !!viewer.member && canEvent(actorFor(viewer, null), "event.create");
 
   const href = (t: EventPhase, k: string | null) => `/events?tab=${t}${k ? `&kind=${k}` : ""}`;
   return (
@@ -66,12 +66,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       {list.length === 0 ? (
         <p className="mt-10 text-fg-muted">
           {tab === "live" ? "Nothing is running right now." : tab === "upcoming" ? "No upcoming events yet." : "No past events yet."}{" "}
-          {canCreate ? "Add one so the community can plan around it." : "Team captains and co-captains can add events."}
+          {canCreate ? "Add one so the community can plan around it." : "Sign in to add one."}
         </p>
       ) : (
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {list.map((r) => (
-            <EventCard key={r.event.id} e={r.event} phase={r.phase} ownerTag={r.ownerTag} ownerLogo={r.ownerLogo} teams={r.teams} />
+            <EventCard key={r.event.id} e={r.event} phase={r.phase} ownerTag={r.ownerTag} ownerLogo={r.ownerLogo} hostHandle={r.hostHandle} teams={r.teams} />
           ))}
         </div>
       )}

@@ -49,8 +49,11 @@ export function EventForm({
   defaults = {},
   limited = false,
   submitLabel,
+  teamTag,
 }: {
   action: (prev: ActionState, form: FormData) => Promise<ActionState>;
+  /** creating only: the viewer leads this team, so they may host as it */
+  teamTag?: string;
   defaults?: Defaults;
   /** event has started: only end time and link are editable */
   limited?: boolean;
@@ -67,6 +70,15 @@ export function EventForm({
         <label htmlFor="title" className={labelCls}>Title</label>
         <input id="title" name="title" required minLength={3} maxLength={80} defaultValue={f.title} disabled={limited} className={`${inputCls} mt-1`} />
       </div>
+      {teamTag && (
+        <div>
+          <label htmlFor="host" className={labelCls}>Host</label>
+          <select id="host" name="host" defaultValue="team" className={`${inputCls} mt-1`}>
+            <option value="team">My team ({teamTag}): any captain or co-captain can edit it</option>
+            <option value="personal">Just me: only I can edit it</option>
+          </select>
+        </div>
+      )}
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="kind" className={labelCls}>Kind</label>
