@@ -13,7 +13,7 @@ import { getDb, getEnv, type Db } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
 import { auditLog, challenges, eventRegistrations, events, teamMembers, writeups } from "@/lib/db/schema";
 import { actorFor, type EventViewer } from "@/lib/events/context";
-import { canEvent, deleteAllowed, type EventAction } from "@/lib/events/permissions";
+import { canEvent, canHostAsTeam, deleteAllowed, type EventAction } from "@/lib/events/permissions";
 import { findEventBySlug, findRegistration } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { eventInputSchema, slugify, slugParamSchema, validateWindow } from "@/lib/events/validation";
@@ -83,8 +83,11 @@ export async function createEvent(_prev: ActionState, form: FormData): Promise<A
   const { db, member, viewer } = await actingViewer();
   const raw = readEventForm(form);
   const fields = { title: raw.title, format: raw.format, url: raw.url, description: raw.description };
-  if (!viewer.team || !canEvent(actorFor(viewer, null), "event.create"))
-    return { error: "Only team captains and co-captains can add events.", fields };
+  if (!canEvent(actorFor(viewer, null), "event.create")) return { error: "You can't add events.", fields };
+  // Leads may host as their team (team-owned, editable by any lead); anyone else hosts personally.
+  const asTeam = String(form.get("host") ?? "") === "team";
+  if (asTeam && !(viewer.team && canHostAsTeam(viewer.teamRole))) return { error: "Only team captains and co-captains can host as their team.", fields };
+  const ownerTeamId = asTeam ? viewer.team!.id : null;
   const parsed = eventInputSchema.safeParse(raw);
   if (!parsed.success) return { error: firstIssue(parsed.error), fields };
   const v = parsed.data;
@@ -108,9 +111,9 @@ export async function createEvent(_prev: ActionState, form: FormData): Promise<A
       startsAt: v.startsAt,
       endsAt: v.endsAt,
       createdBy: member.id,
-      ownerTeamId: viewer.team.id,
+      ownerTeamId,
     }),
-    db.insert(auditLog).values(auditEntry({ teamId: viewer.team.id, actorId: member.id, action: "event.create", targetId: id, meta: { title: v.title } })),
+    db.insert(auditLog).values(auditEntry({ teamId: ownerTeamId, actorId: member.id, action: "event.create", targetId: id, meta: { title: v.title } })),
   ]);
   revalidatePath("/events");
   redirect(`/events/${slug}`);
@@ -159,17 +162,19 @@ export async function updateEvent(slug: string, _prev: ActionState, form: FormDa
 export async function deleteEvent(slug: string, _prev: ActionState, form: FormData): Promise<ActionState> {
   const ctx = await authorizeEvent(slug, "event.delete");
   if ("error" in ctx) return { error: ctx.error };
-  const { db, member, event, viewer } = ctx;
+  const { db, member, event } = ctx;
   if (String(form.get("confirm") ?? "") !== event.slug) return { error: `Type ${event.slug} to confirm.` };
+  // "Other" teams are everyone but the hosting team; a personal event has no host team, so every registration counts.
+  const host = event.ownerTeamId ?? "";
   const [{ others }] = await db
     .select({ others: count() })
     .from(eventRegistrations)
-    .where(and(eq(eventRegistrations.eventId, event.id), ne(eventRegistrations.teamId, viewer.team!.id)));
+    .where(and(eq(eventRegistrations.eventId, event.id), ne(eventRegistrations.teamId, host)));
   if (!deleteAllowed(eventPhase(event, Date.now()), others))
     return { error: "Events can only be deleted before they start and before other teams register." };
   // Every write re-checks "no other team registered", in one transaction, so a
   // registration landing after the count above can't be wiped by the cascade.
-  const noOthers = sql`not exists (select 1 from ${eventRegistrations} where ${eventRegistrations.eventId} = ${event.id} and ${eventRegistrations.teamId} <> ${viewer.team!.id})`;
+  const noOthers = sql`not exists (select 1 from ${eventRegistrations} where ${eventRegistrations.eventId} = ${event.id} and ${eventRegistrations.teamId} <> ${host})`;
   const [, deleted] = await db.batch([
     // event_id becomes null via the FK; drop the lock with it.
     db.update(writeups).set({ spoilerUntil: null }).where(and(eq(writeups.eventId, event.id), noOthers)),

@@ -11,6 +11,10 @@ export interface EventActor {
   /** the viewer's team is the event's owner_team_id */
   ownsEvent: boolean;
   platformRole: PlatformRole;
+  /** a personal event (no owner team) that the viewer created */
+  ownsPersonal: boolean;
+  /** users.is_organizer: set by a reviewed DB command, never in-app */
+  isOrganizer: boolean;
 }
 
 /** Single source of truth for event permissions; server actions call it, the UI only hides buttons. */
@@ -18,15 +22,22 @@ export function canEvent(a: EventActor, action: EventAction): boolean {
   const lead = a.teamRole === "captain" || a.teamRole === "co_captain";
   switch (action) {
     case "event.create":
+      // Any onboarded member may post: leads for their team, everyone else as a personal event.
+      return true;
     case "event.register":
     case "event.roster":
       return lead;
     case "event.edit":
     case "event.delete":
-      return lead && a.ownsEvent;
+      return (lead && a.ownsEvent) || a.ownsPersonal || a.isOrganizer;
     case "event.hide":
       return isStaff(a.platformRole);
   }
+}
+
+/** Leads may post on behalf of their team; everyone may post a personal event. */
+export function canHostAsTeam(teamRole: TeamRole | null): boolean {
+  return teamRole === "captain" || teamRole === "co_captain";
 }
 
 /** Deleting would pull the event out from under other teams once anyone else signed up or it started. */

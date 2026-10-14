@@ -1,15 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toggleBookmark, toggleVote } from "./actions";
+import { ShareButton } from "@/components/share/ShareButton";
+import { toggleBookmark, toggleHeart, toggleVote } from "./actions";
 
-export function Social({ writeupId, votes, voted, saved, canVote, signedIn }: { writeupId: string; votes: number; voted: boolean; saved: boolean; canVote: boolean; signedIn: boolean }) {
-  const [state, setState] = useState({ votes, voted, saved, error: "" });
+type Props = { writeupId: string; title: string; votes: number; voted: boolean; hearts: number; loved: boolean; saved: boolean; canVote: boolean; signedIn: boolean };
+
+export function Social({ writeupId, title, votes, voted, hearts, loved, saved, canVote, signedIn }: Props) {
+  const [state, setState] = useState({ votes, voted, hearts, loved, saved, error: "" });
   const [pending, start] = useTransition();
-  const [copied, setCopied] = useState(false);
   const vote = () => start(async () => {
     const r = await toggleVote(writeupId);
     setState((s) => (r.error ? { ...s, error: r.error } : { ...s, error: "", voted: !!r.voted, votes: r.count ?? s.votes }));
+  });
+  const love = () => start(async () => {
+    const r = await toggleHeart(writeupId);
+    setState((s) => (r.error ? { ...s, error: r.error } : { ...s, error: "", loved: !!r.loved, hearts: r.count ?? s.hearts }));
   });
   const save = () => start(async () => {
     const r = await toggleBookmark(writeupId);
@@ -21,14 +27,16 @@ export function Social({ writeupId, votes, voted, saved, canVote, signedIn }: { 
         className={`rounded border px-3 py-1 disabled:opacity-60 ${state.voted ? "border-green-bright text-green-bright" : "border-line-strong text-fg hover:border-green-bright"}`}>
         ▲ {state.votes} {state.voted ? "upvoted" : "upvote"}
       </button>
+      <button type="button" disabled={pending || !signedIn || !canVote} onClick={love} aria-pressed={state.loved} aria-label={state.loved ? "Remove love" : "Love this writeup"}
+        className={`rounded border px-3 py-1 disabled:opacity-60 ${state.loved ? "border-red-bright text-red-bright" : "border-line-strong text-fg hover:border-red-bright"}`}>
+        {state.loved ? "♥" : "♡"} {state.hearts}
+      </button>
       {signedIn && (
         <button type="button" disabled={pending} onClick={save} aria-pressed={state.saved} className="rounded border border-line-strong px-3 py-1 text-fg hover:border-green-bright disabled:opacity-60">
           {state.saved ? "bookmarked" : "bookmark"}
         </button>
       )}
-      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(location.href); setCopied(true); } catch {} }} className="text-fg-muted hover:text-fg">
-        {copied ? "link copied" : "copy link"}
-      </button>
+      <ShareButton title={title} />
       {state.error && <span role="alert" className="text-red-bright">{state.error}</span>}
     </div>
   );

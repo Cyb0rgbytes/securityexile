@@ -8,7 +8,7 @@ import { Countdown } from "@/components/events/Countdown";
 import { HideWriteup } from "@/components/writeups/WriteupActions";
 import { isStaff } from "@/lib/auth/platform";
 import { getDb } from "@/lib/db/client";
-import { bookmarks, events, teams, votes, writeupSeries, writeups } from "@/lib/db/schema";
+import { bookmarks, events, teams, votes, writeupHearts, writeupSeries, writeups } from "@/lib/db/schema";
 import { requestNow } from "@/lib/events/clock";
 import { loadCommentTree } from "@/lib/writeups/comments";
 import { canVote } from "@/lib/writeups/permissions";
@@ -47,7 +47,7 @@ export default async function WriteupPage({ params }: Props) {
   if (!r) notFound();
   const { db, viewer, now, w, authorHandle } = r;
   const staff = isStaff(viewer.platformRole);
-  const [tags, team, linkedEvent, series, myVote, myMark, tree] = await Promise.all([
+  const [tags, team, linkedEvent, series, myVote, myHeart, myMark, tree] = await Promise.all([
     tagsOf(db, w.id),
     w.teamId ? db.query.teams.findFirst({ columns: { tag: true, name: true, logoKey: true }, where: eq(teams.id, w.teamId) }) : null,
     w.eventId
@@ -55,6 +55,7 @@ export default async function WriteupPage({ params }: Props) {
       : null,
     w.seriesId ? db.query.writeupSeries.findFirst({ where: eq(writeupSeries.id, w.seriesId) }) : null,
     viewer.userId ? db.query.votes.findFirst({ where: and(eq(votes.writeupId, w.id), eq(votes.userId, viewer.userId)) }) : null,
+    viewer.userId ? db.query.writeupHearts.findFirst({ where: and(eq(writeupHearts.writeupId, w.id), eq(writeupHearts.userId, viewer.userId)) }) : null,
     viewer.userId ? db.query.bookmarks.findFirst({ where: and(eq(bookmarks.writeupId, w.id), eq(bookmarks.userId, viewer.userId)) }) : null,
     loadCommentTree(db, w.id, { userId: viewer.userId, staff }, now),
   ]);
@@ -103,7 +104,7 @@ export default async function WriteupPage({ params }: Props) {
       )}
       <div className="mt-6 flex flex-wrap items-center gap-4">
         {w.publishedAt && (
-          <Social writeupId={w.id} votes={w.voteCount} voted={!!myVote} saved={!!myMark} canVote={!!viewer.userId && canVote(w, viewer.userId)} signedIn={!!viewer.userId} />
+          <Social writeupId={w.id} title={w.title} votes={w.voteCount} voted={!!myVote} hearts={w.heartCount} loved={!!myHeart} saved={!!myMark} canVote={!!viewer.userId && canVote(w, viewer.userId)} signedIn={!!viewer.userId} />
         )}
         {isAuthor && <Link href={`/writeups/${w.id}/edit`} className="font-mono text-sm text-fg-muted hover:text-green-bright">edit</Link>}
         {staff && w.publishedAt && <HideWriteup id={w.id} hidden={!!w.hiddenAt} />}

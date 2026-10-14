@@ -58,6 +58,8 @@ export const users = sqliteTable(
     skills: text("skills_json", { mode: "json" }).$type<Record<string, number>>().notNull().default({}),
     /** site-wide role; only power is hiding events. Set by a reviewed DB command, never in-app. */
     platformRole: text("platform_role", { enum: PLATFORM_ROLES }).notNull().default("member"),
+    /** may create and edit any community event. Set by a reviewed DB command, never in-app (0004). */
+    isOrganizer: integer("is_organizer", { mode: "boolean" }).notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -314,6 +316,8 @@ export const writeups = sqliteTable(
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     voteCount: integer("vote_count").notNull().default(0),
     commentCount: integer("comment_count").notNull().default(0),
+    /** "love" reactions; appreciation only, not part of the ranking (0004) */
+    heartCount: integer("heart_count").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -374,6 +378,20 @@ export const votes = sqliteTable(
     primaryKey({ columns: [t.writeupId, t.userId] }),
     check("votes_value_ck", sql`${t.value} in (-1, 1)`),
   ],
+);
+
+export const writeupHearts = sqliteTable(
+  "writeup_hearts",
+  {
+    writeupId: text("writeup_id")
+      .notNull()
+      .references(() => writeups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.writeupId, t.userId] })],
 );
 
 export const bookmarks = sqliteTable(

@@ -9,8 +9,9 @@ export function Header() {
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-50 border-b border-line bg-bg/75 backdrop-blur-md">
       <div className="relative mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5 text-fg">
+          {/* falcon-mark carries a baked pale rim: the plain artwork's charcoal wings vanish on the dark bar. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/brand/falcon-64.webp" alt="" width={28} height={26} className="h-7 w-auto" />
+          <img src="/assets/brand/falcon-mark-128.webp" alt="" width={43} height={40} className="h-10 w-auto shrink-0 drop-shadow-[0_0_6px_rgb(34_211_180/0.35)]" />
           <span className="whitespace-nowrap font-display text-[0.8rem] font-bold uppercase tracking-[0.14em] sm:text-[0.95rem] sm:tracking-[0.18em]">
             Security<span className="text-fg-muted transition-colors group-hover:text-green-bright"> Exile</span>
           </span>

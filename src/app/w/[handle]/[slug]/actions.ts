@@ -6,7 +6,7 @@ import { requireMember } from "@/lib/auth/member";
 import { isStaff } from "@/lib/auth/platform";
 import { getDb, getEnv } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
-import { auditLog, bookmarks, comments, users, votes, writeups } from "@/lib/db/schema";
+import { auditLog, bookmarks, comments, users, votes, writeupHearts, writeups } from "@/lib/db/schema";
 import { requestNow } from "@/lib/events/clock";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
@@ -60,6 +60,26 @@ export async function toggleVote(writeupId: string): Promise<ActionState & { vot
   return { voted: !had, count: n };
 }
 
+export async function toggleHeart(writeupId: string): Promise<ActionState & { loved?: boolean; count?: number }> {
+  const ctx = await readable(writeupId);
+  if (!ctx) return notFound;
+  const { db, member, w } = ctx;
+  if (!w.publishedAt) return { error: "Publish first." };
+  if (!canVote(w, member.id)) return { error: "You can't love your own writeup." };
+  const rl = await hit(getEnv(), `vote:${member.id}`, LIMITS.voteBookmark);
+  if (!rl.ok) return { error: retryMessage(rl) };
+  const mine = and(eq(writeupHearts.writeupId, w.id), eq(writeupHearts.userId, member.id));
+  const had = await db.query.writeupHearts.findFirst({ where: mine });
+  // Same shape as toggleVote: toggle, then recount in the same batch.
+  await db.batch([
+    had ? db.delete(writeupHearts).where(mine) : db.insert(writeupHearts).values({ writeupId: w.id, userId: member.id }).onConflictDoNothing(),
+    db.update(writeups).set({ heartCount: db.$count(writeupHearts, eq(writeupHearts.writeupId, w.id)) }).where(eq(writeups.id, w.id)),
+  ]);
+  const [{ n }] = await db.select({ n: count() }).from(writeupHearts).where(eq(writeupHearts.writeupId, w.id));
+  revalidatePath(await pathFor(db, w));
+  return { loved: !had, count: n };
+}
+
 export async function toggleBookmark(writeupId: string): Promise<ActionState & { saved?: boolean }> {
   const ctx = await readable(writeupId);
   if (!ctx) return notFound;
@@ -71,6 +91,11 @@ export async function toggleBookmark(writeupId: string): Promise<ActionState & {
   else await db.insert(bookmarks).values({ writeupId: w.id, userId: member.id }).onConflictDoNothing();
   revalidatePath("/me/bookmarks");
   return { saved: !had };
+}
+
+/** Comments that still have words in them; soft-deleted ones keep the thread shape but don't count. */
+function liveComments(db: ReturnType<typeof getDb>, writeupId: string) {
+  return db.$count(comments, and(eq(comments.writeupId, writeupId), isNull(comments.deletedAt)));
 }
 
 async function depthOf(db: ReturnType<typeof getDb>, parentId: string): Promise<number> {
@@ -104,7 +129,7 @@ export async function addComment(writeupId: string, parentId: string | null, _pr
   if (!rl.ok) return { error: retryMessage(rl) };
   await db.batch([
     db.insert(comments).values({ id: newId(), writeupId: w.id, authorId: member.id, parentId, bodyMd: parsed.data.bodyMd, bodyHtml: renderComment(parsed.data.bodyMd) }),
-    db.update(writeups).set({ commentCount: db.$count(comments, and(eq(comments.writeupId, w.id))) }).where(eq(writeups.id, w.id)),
+    db.update(writeups).set({ commentCount: liveComments(db, w.id) }).where(eq(writeups.id, w.id)),
   ]);
   revalidatePath(await pathFor(db, w));
   return { ok: "Posted." };
@@ -146,6 +171,7 @@ export async function deleteComment(commentId: string): Promise<ActionState> {
     .where(and(eq(comments.id, commentId), eq(comments.authorId, member.id), isNull(comments.deletedAt)))
     .returning({ writeupId: comments.writeupId });
   if (deleted.length === 0) return { error: "Comment not found." };
+  await db.update(writeups).set({ commentCount: liveComments(db, deleted[0].writeupId) }).where(eq(writeups.id, deleted[0].writeupId));
   const w = await db.query.writeups.findFirst({ columns: { authorId: true, slug: true }, where: eq(writeups.id, deleted[0].writeupId) });
   if (w) revalidatePath(await pathFor(db, w));
   return { ok: "Deleted." };

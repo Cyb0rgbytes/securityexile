@@ -19,6 +19,9 @@ import { findEventBySlug, listRegisteredTeams } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { slugParamSchema } from "@/lib/events/validation";
 import { listRoster } from "@/lib/teams/queries";
+import { ShareButton } from "@/components/share/ShareButton";
+import { eq } from "drizzle-orm";
+import { teams, users } from "@/lib/db/schema";
 import { WriteupCard } from "@/components/writeups/WriteupCard";
 import { listWriteups } from "@/lib/writeups/queries";
 import { loadWriteupViewer } from "@/lib/writeups/viewer";
@@ -28,7 +31,17 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  return { title: slugParamSchema.safeParse(slug).success ? slug : "Event" };
+  if (!slugParamSchema.safeParse(slug).success) return { title: "Event" };
+  const db = getDb();
+  const [event, viewer] = await Promise.all([findEventBySlug(db, slug), loadViewer(db)]);
+  if (!event || !canSeeEvent(event, viewer)) return { title: "Event" };
+  const description = (event.description ?? `${event.kind === "ctf" ? "CTF" : "Community event"} on Security Exile.`).slice(0, 200);
+  return {
+    title: event.title,
+    description,
+    openGraph: { title: event.title, description, type: "website" },
+    robots: event.hiddenAt ? { index: false } : undefined,
+  };
 }
 
 export default async function EventPage({ params }: Props) {
@@ -47,9 +60,14 @@ export default async function EventPage({ params }: Props) {
   // listWriteups applies the spoiler lock: outsiders see nothing until the event ends.
   const eventWriteups = await listWriteups(db, { viewer: await loadWriteupViewer(db), now: new Date(now), tab: "top", eventId: event.id, limit: 20 });
   const mine = viewer.team ? registered.find((r) => r.teamId === viewer.team!.id) : undefined;
-  const othersRegistered = registered.filter((r) => r.teamId !== viewer.team?.id).length;
+  // "Other" means anyone but the hosting team; for a personal event every registration counts.
+  const othersRegistered = registered.filter((r) => r.teamId !== event.ownerTeamId).length;
   const canRoster = !!mine && canEvent(actor, "event.roster");
   const roster = canRoster ? await listRoster(db, viewer.team!.id) : [];
+  const host = event.ownerTeamId
+    ? await db.query.teams.findFirst({ columns: { tag: true, name: true, logoKey: true }, where: eq(teams.id, event.ownerTeamId) })
+    : null;
+  const hostMember = !host && event.createdBy ? await db.query.users.findFirst({ columns: { handle: true }, where: eq(users.id, event.createdBy) }) : null;
 
   return (
     <article className="mx-auto max-w-4xl px-4 pt-16 sm:px-6">
@@ -74,6 +92,13 @@ export default async function EventPage({ params }: Props) {
           </a>
         </p>
       )}
+      <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+        {host ? (
+          <>hosted by <EmblemBadge emblem={host.logoKey} size={18} /> <Link href={`/teams/${host.tag}`} className="text-fg hover:text-green-bright">{host.name}</Link></>
+        ) : (
+          hostMember?.handle && <>hosted by <Link href={`/u/${hostMember.handle}`} className="text-fg hover:text-green-bright">@{hostMember.handle}</Link></>
+        )}
+      </p>
       {event.description && <p className="mt-6 whitespace-pre-line text-fg">{event.description}</p>}
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -91,6 +116,7 @@ export default async function EventPage({ params }: Props) {
         )}
         {canEvent(actor, "event.delete") && deleteAllowed(phase, othersRegistered) && <DeleteEventForm slug={event.slug} />}
         {canEvent(actor, "event.hide") && <HideToggle slug={event.slug} hidden={!!event.hiddenAt} />}
+        {!event.hiddenAt && <ShareButton title={event.title} text={`Join ${event.title} on Security Exile`} />}
       </div>
 
       {canRoster && (

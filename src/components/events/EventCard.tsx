@@ -11,7 +11,7 @@ export function kindLabel(e: Pick<EventRow, "kind" | "format">) {
   return e.kind === "ctf" ? `ctf${e.format ? ` / ${e.format}` : ""}` : "community";
 }
 
-export function EventCard({ e, phase, ownerTag, ownerLogo, teams }: { e: EventRow; phase: EventPhase; ownerTag: string | null; ownerLogo: string | null; teams: number }) {
+export function EventCard({ e, phase, ownerTag, ownerLogo, hostHandle, teams }: { e: EventRow; phase: EventPhase; ownerTag: string | null; ownerLogo: string | null; hostHandle?: string | null; teams: number }) {
   return (
     <Link href={`/events/${e.slug}`} className="block rounded border border-line bg-bg-deep/60 p-4 transition-colors hover:border-green-bright">
       <div className="flex flex-wrap items-center gap-2">
@@ -28,10 +28,12 @@ export function EventCard({ e, phase, ownerTag, ownerLogo, teams }: { e: EventRo
         {phase === "upcoming" && <Countdown targetIso={e.startsAt.toISOString()} prefix="starts in" />}
         {phase === "live" && <Countdown targetIso={e.endsAt.toISOString()} prefix="ends in" />}
         {e.kind === "ctf" && <span>{teams === 1 ? "1 team" : `${teams} teams`}</span>}
-        {ownerTag && (
+        {ownerTag ? (
           <span className="ml-auto inline-flex items-center gap-1.5">
             <EmblemBadge emblem={ownerLogo} size={18} /> added by {ownerTag}
           </span>
+        ) : (
+          hostHandle && <span className="ml-auto">hosted by @{hostHandle}</span>
         )}
       </div>
     </Link>

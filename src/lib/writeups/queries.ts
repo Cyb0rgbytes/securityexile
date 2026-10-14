@@ -8,7 +8,7 @@ import { listWhere, type Viewer } from "./visibility";
 export type WriteupRow = typeof writeups.$inferSelect;
 export type ListedWriteup = {
   id: string; slug: string; title: string; category: string | null; difficulty: string | null;
-  voteCount: number; commentCount: number; publishedAt: Date | null; spoilerUntil: Date | null; bodyChars: number;
+  voteCount: number; heartCount: number; commentCount: number; publishedAt: Date | null; spoilerUntil: Date | null; bodyChars: number;
   authorHandle: string; teamTag: string | null; teamLogo: string | null; tags: string[];
 };
 
@@ -58,7 +58,7 @@ export async function listWriteups(
   const rows = await db
     .select({
       id: writeups.id, slug: writeups.slug, title: writeups.title, category: writeups.category, difficulty: writeups.difficulty,
-      voteCount: writeups.voteCount, commentCount: writeups.commentCount, publishedAt: writeups.publishedAt,
+      voteCount: writeups.voteCount, heartCount: writeups.heartCount, commentCount: writeups.commentCount, publishedAt: writeups.publishedAt,
       spoilerUntil: writeups.spoilerUntil,
       // Length only, for read time: lists never pull full bodies (up to 100 KB each).
       bodyChars: sql<number>`length(${writeups.bodyMd})`,

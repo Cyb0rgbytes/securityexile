@@ -11,10 +11,12 @@ function boardQuery(db: Db, where: SQL | undefined) {
       event: events,
       ownerTag: teams.tag,
       ownerLogo: teams.logoKey,
+      hostHandle: users.handle,
       teams: count(eventRegistrations.teamId),
     })
     .from(events)
     .leftJoin(teams, eq(teams.id, events.ownerTeamId))
+    .leftJoin(users, eq(users.id, events.createdBy))
     .leftJoin(eventRegistrations, eq(eventRegistrations.eventId, events.id))
     .where(where)
     .groupBy(events.id);
