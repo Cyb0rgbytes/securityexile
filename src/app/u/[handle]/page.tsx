@@ -7,6 +7,7 @@ import { getMember } from "@/lib/auth/member";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { NeonButton } from "@/components/ui/NeonButton";
 import Link from "next/link";
+import { badgesOf, VISIBLE_BADGE_COUNT } from "@/lib/profile/queries";
 import { toNextTier } from "@/lib/profile/xp";
 import { findMembershipOf } from "@/lib/teams/queries";
 import { EmblemBadge } from "@/components/teams/EmblemBadge";
@@ -42,7 +43,7 @@ export default async function DossierPage({ params }: Props) {
 
   const db = getDb();
   const now = requestNow();
-  const [viewer, team, wv] = await Promise.all([getMember(), findMembershipOf(db, user.id), loadWriteupViewer(db)]);
+  const [viewer, team, wv, held] = await Promise.all([getMember(), findMembershipOf(db, user.id), loadWriteupViewer(db), badgesOf(db, user.id)]);
   // Same list rule as the library: drafts, hidden and spoiler-locked writeups never show here for outsiders.
   const theirs = await listWriteups(db, { viewer: wv, now: new Date(now), tab: "newest", authorId: user.id, limit: 20 });
   const isSelf = viewer?.handle === user.handle;
@@ -99,6 +100,25 @@ export default async function DossierPage({ params }: Props) {
       </GlassPanel>
 
       {user.bio && <p className="mt-6 max-w-2xl leading-relaxed text-fg-muted">{user.bio}</p>}
+
+      {held.length > 0 && (
+        <section aria-labelledby="badges-h" className="mt-10">
+          <h2 id="badges-h" className="font-display text-lg font-semibold tracking-tight text-fg">
+            badges/ <span className="font-mono text-sm font-normal text-fg-muted">{held.length} of {VISIBLE_BADGE_COUNT}</span>
+          </h2>
+          <ul className="mt-4 flex flex-wrap gap-3">
+            {held.map((b) => (
+              <li key={b.slug} className="notch notch-sm border border-line-strong bg-bg-raised/60 px-3 py-2">
+                <p className="font-display text-sm font-semibold text-green-bright">{b.name}</p>
+                {b.description && <p className="mt-0.5 text-xs text-fg-muted">{b.description}</p>}
+                <p className="mt-1 font-mono text-[0.65rem] uppercase tracking-[0.15em] text-fg-muted">
+                  {b.tier ?? "badge"} · <time dateTime={b.awardedAt.toISOString()}>{joined.format(b.awardedAt)}</time>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="writeups-h" className="mt-10">
         <h2 id="writeups-h" className="font-display text-lg font-semibold tracking-tight text-fg">

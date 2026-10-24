@@ -17,7 +17,7 @@ import { canEvent, canHostAsTeam, deleteAllowed, type EventAction } from "@/lib/
 import { findEventBySlug, findRegistration } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { eventInputSchema, slugify, slugParamSchema, validateWindow } from "@/lib/events/validation";
-import { recountXp } from "@/lib/profile/queries";
+import { awardBadges, recountXp } from "@/lib/profile/queries";
 import { rosterDelta } from "@/lib/profile/xp";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
@@ -258,6 +258,8 @@ export async function setRoster(slug: string, _prev: ActionState, form: FormData
     // Only those added or dropped change; members who stay on the roster keep the same XP.
     ...rosterDelta(registration.roster, picked).flatMap((id) => recountXp(db, id)),
   ]);
+  // Only members newly on the roster can have earned something; badges are never taken back.
+  for (const id of picked.filter((p) => !registration.roster.includes(p))) await awardBadges(db, id);
   revalidateEvent(event.slug);
   return { ok: `Roster saved (${picked.length} playing).` };
 }
