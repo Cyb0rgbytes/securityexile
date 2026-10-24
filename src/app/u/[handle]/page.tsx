@@ -7,6 +7,7 @@ import { getMember } from "@/lib/auth/member";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { NeonButton } from "@/components/ui/NeonButton";
 import Link from "next/link";
+import { toNextTier } from "@/lib/profile/xp";
 import { findMembershipOf } from "@/lib/teams/queries";
 import { EmblemBadge } from "@/components/teams/EmblemBadge";
 import { RoleChip } from "@/components/teams/RoleChip";
@@ -37,6 +38,7 @@ export default async function DossierPage({ params }: Props) {
   const { handle } = await params;
   const user = await findByHandle(handle);
   if (!user?.handle) notFound();
+  const next = toNextTier(user.xp);
 
   const db = getDb();
   const now = requestNow();
@@ -74,6 +76,7 @@ export default async function DossierPage({ params }: Props) {
             <div>
               <dt className="inline text-fg-muted">xp </dt>
               <dd className="inline text-green-bright">{user.xp}</dd>
+              {next && <span className="ms-2 text-fg-muted">({next.remaining} to {next.tier})</span>}
             </div>
             {team && (
               <div className="flex items-center gap-2">
