@@ -17,6 +17,8 @@ import { canEvent, canHostAsTeam, deleteAllowed, type EventAction } from "@/lib/
 import { findEventBySlug, findRegistration } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { eventInputSchema, slugify, slugParamSchema, validateWindow } from "@/lib/events/validation";
+import { recountXp } from "@/lib/profile/queries";
+import { rosterDelta } from "@/lib/profile/xp";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
 import { findMembershipOf } from "@/lib/teams/queries";
@@ -224,9 +226,12 @@ export async function unregisterTeam(slug: string, _prev: ActionState, form: For
   const team = viewer.team!;
   if (String(form.get("confirm") ?? "").trim().toUpperCase() !== team.tag) return { error: `Type ${team.tag} to confirm.` };
   if (!registrationOpen(event, Date.now())) return { error: "This event has ended; the registration can't change." };
+  // Read the roster before it goes: everyone on it loses the XP for playing this event.
+  const played = (await findRegistration(db, event.id, team.id))?.roster ?? [];
   await db.batch([
     db.delete(challenges).where(and(eq(challenges.eventId, event.id), eq(challenges.teamId, team.id))),
     db.delete(eventRegistrations).where(and(eq(eventRegistrations.eventId, event.id), eq(eventRegistrations.teamId, team.id))),
+    ...played.flatMap((id) => recountXp(db, id)),
     db.insert(auditLog).values(auditEntry({ teamId: team.id, actorId: member.id, action: "event.unregister", targetId: event.id, meta: { title: event.title } })),
   ]);
   revalidateEvent(event.slug);
@@ -238,7 +243,8 @@ export async function setRoster(slug: string, _prev: ActionState, form: FormData
   if ("error" in ctx) return { error: ctx.error };
   const { db, member, event, viewer } = ctx;
   const team = viewer.team!;
-  if (!(await findRegistration(db, event.id, team.id))) return { error: "Register the team first." };
+  const registration = await findRegistration(db, event.id, team.id);
+  if (!registration) return { error: "Register the team first." };
   const picked = [...new Set(form.getAll("roster").map(String))].slice(0, 100);
   const memberIds = new Set(
     (await db.select({ id: teamMembers.userId }).from(teamMembers).where(eq(teamMembers.teamId, team.id))).map((r) => r.id),
@@ -249,6 +255,8 @@ export async function setRoster(slug: string, _prev: ActionState, form: FormData
     db.insert(auditLog).values(
       auditEntry({ teamId: team.id, actorId: member.id, action: "event.roster", targetId: event.id, meta: { title: event.title, count: picked.length } }),
     ),
+    // Only those added or dropped change; members who stay on the roster keep the same XP.
+    ...rosterDelta(registration.roster, picked).flatMap((id) => recountXp(db, id)),
   ]);
   revalidateEvent(event.slug);
   return { ok: `Roster saved (${picked.length} playing).` };
