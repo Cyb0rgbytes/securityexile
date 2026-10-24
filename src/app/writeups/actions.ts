@@ -15,6 +15,7 @@ import { isUniqueViolation } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { auditLog, events, uploads, writeupSeries, writeupTags, writeups } from "@/lib/db/schema";
 import { slugify } from "@/lib/events/validation";
+import { recountXp } from "@/lib/profile/queries";
 import { hit, LIMITS, MAX_DRAFTS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
 import { findMembershipOf } from "@/lib/teams/queries";
@@ -144,6 +145,8 @@ export async function setPublished(id: string, publish: boolean): Promise<Action
   await db.batch([
     db.update(writeups).set({ publishedAt: publish ? new Date() : null }).where(eq(writeups.id, w.id)),
     db.insert(auditLog).values(auditEntry({ teamId: w.teamId, actorId: member.id, action: publish ? "writeup.publish" : "writeup.unpublish", targetId: w.id, meta: { title: w.title } })),
+    // Publishing is what earns the XP, so the author's total is recounted alongside it.
+    ...recountXp(db, w.authorId),
   ]);
   revalidateWriteups(member.handle, w.slug);
   return { ok: publish ? "Published." : "Moved back to drafts." };
@@ -178,6 +181,8 @@ export async function deleteWriteup(id: string, _prev: ActionState, form: FormDa
         ? auditEntry({ teamId: w.teamId, actorId: member.id, action: "writeup.delete", targetId: w.id, meta: { title: w.title } })
         : auditEntry({ teamId: null, actorId: member.id, action: "writeup.delete", targetId: w.id }),
     ),
+    // The writeup is gone, so the XP it earned goes with it.
+    ...recountXp(db, w.authorId),
   ]);
   if (images.length) {
     try {
@@ -201,6 +206,8 @@ export async function setWriteupHidden(id: string, hidden: boolean): Promise<Act
   await db.batch([
     db.update(writeups).set({ hiddenAt: hidden ? new Date() : null }).where(eq(writeups.id, w.id)),
     db.insert(auditLog).values(auditEntry({ teamId: null, actorId: member.id, action: hidden ? "writeup.hide" : "writeup.unhide", targetId: w.id, meta: { title: w.title } })),
+    // Hidden writeups don't count, and the recount belongs to the author, not the moderator.
+    ...recountXp(db, w.authorId),
   ]);
   revalidatePath("/writeups");
   return { ok: hidden ? "Writeup hidden." : "Writeup restored." };
