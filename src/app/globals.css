@@ -67,6 +67,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Arabic subtrees (landing, policies): Plex Sans Arabic for body and display text.
+ * Display utilities resolve var(--font-chakra) at the element, so overriding it here
+ * swaps headings too. Arabic letters join, so tracking utilities are cancelled. */
+[lang="ar"] {
+  --font-chakra: var(--font-plex-arabic);
+  --font-plex-sans: var(--font-plex-arabic);
+  font-family: var(--font-plex-arabic), ui-sans-serif, system-ui, sans-serif;
+}
+[lang="ar"] [class*="tracking-"],
+[lang="ar"] .prose-se :where(h1, h2, h3, h4) {
+  letter-spacing: 0;
+}
+
 ::selection {
   background: rgb(242 65 46 / 0.35);
   color: #fff;
@@ -214,7 +227,7 @@ body {
 @utility cursor-blink {
   &::after {
     content: "_";
-    margin-left: 0.08em;
+    margin-inline-start: 0.08em;
     color: var(--se-red);
     animation: se-blink 1.05s steps(1) infinite;
   }
@@ -492,12 +505,12 @@ body {
 
 .md-notes { font-size: 0.875rem; line-height: 1.6; color: var(--color-fg); overflow-wrap: anywhere; }
 .md-notes :where(p, ul, ol, pre, blockquote, table) { margin-block: 0.5rem; }
-.md-notes ul { list-style: disc; padding-left: 1.25rem; }
-.md-notes ol { list-style: decimal; padding-left: 1.25rem; }
+.md-notes ul { list-style: disc; padding-inline-start: 1.25rem; }
+.md-notes ol { list-style: decimal; padding-inline-start: 1.25rem; }
 .md-notes a { color: var(--color-green-bright); text-decoration: underline; text-underline-offset: 3px; }
 .md-notes code { font-family: var(--font-mono); font-size: 0.8125rem; }
 .md-notes pre { overflow-x: auto; padding: 0.75rem; border: 1px solid var(--color-line); border-radius: 3px; background: var(--color-bg-deep); }
-.md-notes blockquote { border-left: 2px solid var(--color-red); padding-left: 0.75rem; color: var(--color-fg-muted); }
+.md-notes blockquote { border-inline-start: 2px solid var(--color-red); padding-inline-start: 0.75rem; color: var(--color-fg-muted); }
 
 /* ---------- Writeups (rendered markdown + terminal blocks) ----------
  * .term* and .hljs-* names are locked by the sanitizer allowlist in
@@ -510,15 +523,15 @@ body {
 .prose-se h2 { padding-bottom: 0.35rem; border-bottom: 1px solid var(--color-line); }
 .prose-se a { color: var(--color-green-bright); text-decoration: underline; text-decoration-color: rgb(95 245 216 / 0.4); text-underline-offset: 3px; }
 .prose-se a:hover { text-decoration-color: currentColor; }
-.prose-se ul { list-style: disc; padding-left: 1.5rem; } .prose-se ol { list-style: decimal; padding-left: 1.5rem; }
+.prose-se ul { list-style: disc; padding-inline-start: 1.5rem; } .prose-se ol { list-style: decimal; padding-inline-start: 1.5rem; }
 .prose-se li::marker { color: var(--color-red); }
-.prose-se blockquote { border-left: 2px solid var(--color-red); padding-left: 1rem; color: var(--color-fg-muted); }
+.prose-se blockquote { border-inline-start: 2px solid var(--color-red); padding-inline-start: 1rem; color: var(--color-fg-muted); }
 .prose-se :not(pre) > code { font-family: var(--font-mono); font-size: 0.85em; padding: 0.1em 0.35em; border-radius: 2px; background: var(--color-bg-raised); border: 1px solid var(--color-line); }
-.prose-se pre { overflow-x: auto; padding: 1rem 1.1rem; border: 1px solid var(--color-line); border-left: 2px solid var(--color-line-strong); border-radius: 3px; background: var(--color-bg-deep); font-size: 0.85rem; line-height: 1.65; }
+.prose-se pre { overflow-x: auto; padding: 1rem 1.1rem; border: 1px solid var(--color-line); border-inline-start: 2px solid var(--color-line-strong); border-radius: 3px; background: var(--color-bg-deep); font-size: 0.85rem; line-height: 1.65; }
 .prose-se pre code { font-family: var(--font-mono); }
 .prose-se img { max-width: 100%; height: auto; border: 1px solid var(--color-line); border-radius: 3px; }
 .prose-se table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.prose-se :where(th, td) { border: 1px solid var(--color-line); padding: 0.4rem 0.6rem; text-align: left; }
+.prose-se :where(th, td) { border: 1px solid var(--color-line); padding: 0.4rem 0.6rem; text-align: start; }
 .prose-se th { background: var(--color-bg-raised); font-family: var(--font-display); font-weight: 600; }
 .prose-se .term { font-family: var(--font-mono); white-space: pre; }
 .term .term-prompt { color: var(--color-green); }

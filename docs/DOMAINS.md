@@ -8,13 +8,14 @@ phase below says when to turn its part on.
 
 | Host | Serves | Owner |
 | --- | --- | --- |
-| `securityexile.com` | Marketing landing (`/`), `/security`, robots/icons | this Worker (`securityexile`) |
+| `securityexile.com` | Landing in English (`/`) and Arabic (`/ar`), `/terms`, `/privacy` (+ `/ar/…`), `/security`, robots/icons | this Worker (`securityexile`) |
 | `www.securityexile.com` | 308 → `securityexile.com` | this Worker |
 | `app.securityexile.com` | The community app: writeups, events, teams, profiles | this Worker |
 | `accounts.securityexile.com` | Sign in / sign up (Clerk Account Portal) | Clerk (hosted) |
 | `clerk.securityexile.com` | Clerk Frontend API (session JS, tokens) | Clerk (hosted) |
 | `files.securityexile.com` | Writeup images (R2 bucket `security-exile-uploads`) | R2 custom domain |
-| `arena.securityexile.com` | CTF arena / labs: a separate product, only linked from here | separate deploy |
+| `ctf.securityexile.com` | CTF arena (CTFd, Build Plan stage 2). Until it launches: holding page from this Worker | separate VPS later |
+| `labs.securityexile.com` | Hands-on labs (Build Plan stage 4). Until it launches: holding page from this Worker | isolated infra later |
 
 Session cookies from a Clerk **production** instance are set on `securityexile.com`, so every
 subdomain sees the same signed-in member. A development instance can't share sessions this way.
@@ -22,10 +23,11 @@ subdomain sees the same signed-in member. A development instance can't share ses
 ## What the code does
 
 - `src/lib/site/hosts.ts` `hostRedirect()` is a pure function with unit tests in `hosts.test.ts`. `src/proxy.ts` calls it on every request:
-  - `securityexile.com`: serves `/`, `/security`, `robots.txt`, icons, OG images and `/__clerk/*`. Everything else gets a **308** to the same path and query on `app.`. Relative links on the landing page (`/writeups`, `/sign-up`) therefore just work.
+  - `securityexile.com`: serves `/`, `/ar`, `/terms`, `/privacy`, `/ar/terms`, `/ar/privacy`, `/security`, `robots.txt`, icons, OG images and `/__clerk/*`. Everything else gets a **308** to the same path and query on `app.`. Relative links on the landing page (`/writeups`, `/sign-up`) therefore just work.
   - `www.` → apex.
   - `app.securityexile.com/`: signed-in → `/writeups`; signed-out → the apex landing.
   - Any other host (localhost, `*.workers.dev` previews) is untouched.
+  - `hostRewrite()` renders `/soon/ctf` or `/soon/labs` for `ctf.` / `labs.`. It isn't behind `HOST_SPLIT`: those hosts only reach this Worker once you attach them as custom domains, and when CTFd or the labs launch you point their DNS at the new servers instead.
   - The whole split is switched by the Worker var `HOST_SPLIT` (`wrangler.jsonc`), which defaults to `"off"`.
 - `src/lib/auth/urls.ts` reads `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `_SIGN_UP_URL`.
   - When these are absolute (`https://accounts.…`), `ClerkProvider` sends sign-in there and only allows the app and apex as redirect targets (`allowedRedirectOrigins`).
@@ -38,7 +40,7 @@ subdomain sees the same signed-in member. A development instance can't share ses
 
 Do these in order. Steps marked **(you)** are dashboard work.
 
-### Phase 1: Writeups on production (unblocks the Writeups tab)
+### Phase 1: Writeups on production ✅ done (2026-10-14)
 1. `npx wrangler r2 bucket create security-exile-uploads`
 2. **(you)** R2 → bucket → Settings → Custom domain `files.securityexile.com`. Add a Transform Rule (response headers) for that host:
    - `X-Content-Type-Options: nosniff`
@@ -74,6 +76,9 @@ Do this only after Phase 2, so the apex shares the session.
    - `curl -sI https://securityexile.com/writeups` → `308 location: https://app.securityexile.com/writeups`
    - `curl -sI https://app.securityexile.com/` (signed out) → `308 location: https://securityexile.com/`
    - `curl -sI https://www.securityexile.com/` → `308` to the apex
+
+### ctf. and labs. holding pages (Build Plan p1-01)
+No code switch needed. In Cloudflare → Workers → `securityexile` → Domains & Routes, add custom domains `ctf.securityexile.com` and `labs.securityexile.com`. Check that `curl -s https://ctf.securityexile.com/` shows *The CTF arena is being built*. When CTFd launches, remove `ctf.` from the Worker and point its DNS at the CTFd server (see `docs/STAGE-1-RUNBOOK.md`).
 
 ## Granting the organizer role
 Organizers can create events and edit or delete any event. They have no moderation or team powers. Per the no-in-app-admin rule, the flag is set only by a reviewed command:

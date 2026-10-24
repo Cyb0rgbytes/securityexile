@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono, Shippori_Mincho } from "next/font/google";
+import { Chakra_Petch, IBM_Plex_Sans, IBM_Plex_Sans_Arabic, JetBrains_Mono, Shippori_Mincho } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { clerkAppearance } from "@/lib/auth/appearance";
 import { SIGN_IN_URL, SIGN_UP_URL, usesAccountPortal } from "@/lib/auth/urls";
@@ -45,6 +45,15 @@ const shippori = Shippori_Mincho({
   preload: false,
 });
 
+// Arabic pages only (landing, policies). Not preloaded so English pages never fetch it.
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-plex-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
   // Absolute OG/canonical URLs resolve against the app host, where the shared pages live.
   metadataBase: new URL(APP_ORIGIN),
@@ -69,7 +78,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       lang="en"
       data-fx="full"
       suppressHydrationWarning
-      className={`${mono.variable} ${plex.variable} ${chakra.variable} ${shippori.variable} h-full antialiased`}
+      className={`${mono.variable} ${plex.variable} ${chakra.variable} ${shippori.variable} ${plexArabic.variable} h-full antialiased`}
     >
       <head>
         {/* Sets data-fx before first paint; see lib/fx/init-script.ts */}

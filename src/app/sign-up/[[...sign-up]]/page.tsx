@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignUp } from "@clerk/nextjs";
 import { AuthShell } from "@/components/layout/AuthShell";
@@ -13,6 +14,17 @@ export default async function SignUpPage({ searchParams }: { searchParams: Promi
     <AuthShell command="useradd --create-home operator">
       {/* force: every new account claims a handle before anything else */}
       <SignUp signInUrl="/sign-in" forceRedirectUrl="/onboarding" />
+      <p className="mt-6 text-center text-sm text-fg-muted">
+        By joining you agree to the{" "}
+        <Link href="/terms" className="text-fg underline underline-offset-4 hover:text-green-bright">
+          Terms of Use
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="text-fg underline underline-offset-4 hover:text-green-bright">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </AuthShell>
   );
 }
