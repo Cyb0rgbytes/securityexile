@@ -20,11 +20,11 @@ export function Header() {
           </span>
         </Link>
 
-        <nav aria-label="Main" className="ml-auto hidden md:block">
+        <nav aria-label="Main" className="ms-auto hidden md:block">
           <NavLinks />
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-3 md:ml-2">
+        <div className="ms-auto flex items-center gap-2 sm:gap-3 md:ms-2">
           <span className="hidden items-center gap-1 text-xs text-fg-muted lg:flex" title="Command palette (coming soon)">
             <Kbd>Ctrl</Kbd>
             <Kbd>K</Kbd>
