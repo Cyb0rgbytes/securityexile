@@ -26,6 +26,21 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link href="/terms" className="hover:text-green-bright">
+              Terms
+            </Link>
+          </li>
+          <li>
+            <Link href="/privacy" className="hover:text-green-bright">
+              Privacy
+            </Link>
+          </li>
+          <li>
+            <Link href="/ar" hrefLang="ar" lang="ar" className="hover:text-green-bright">
+              العربية
+            </Link>
+          </li>
+          <li>
             <a href="/.well-known/security.txt" className="hover:text-green-bright">
               security.txt
             </a>

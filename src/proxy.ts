@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { hostRedirect } from "@/lib/site/hosts";
+import { hostRedirect, hostRewrite } from "@/lib/site/hosts";
 
 // Coarse gate: bounce signed-out visitors before rendering member pages.
 // The real authorization check lives in server code (requireMember and the
@@ -57,14 +57,19 @@ export default clerkMiddleware(
     const elsewhere = hostRedirect(req.nextUrl, { enabled: process.env.HOST_SPLIT === "on", signedIn: !!(await auth()).userId });
     if (elsewhere) return NextResponse.redirect(elsewhere, 308);
 
-    if (isMemberRoute(req)) await auth.protect();
+    // ctf./labs. are holding pages until those products launch on their own servers.
+    const holding = hostRewrite(req.nextUrl);
+
+    if (!holding && isMemberRoute(req)) await auth.protect();
 
     const nonce = newNonce();
     const csp = contentSecurityPolicy(nonce);
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
-    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    const res = holding
+      ? NextResponse.rewrite(new URL(holding, req.url), { request: { headers: requestHeaders } })
+      : NextResponse.next({ request: { headers: requestHeaders } });
     res.headers.set("Content-Security-Policy", csp);
     return res;
   },
