@@ -20,7 +20,7 @@ description: Accessibility (WCAG 2.2), responsive/input-aware design, and Englis
 
 ## Internationalization (English + Arabic)
 - Dictionaries live in `src/lib/i18n/en.ts` and `ar.ts`; `ar` must satisfy the `en` type, and a parity test enforces it. Get one with `getDict(lang)`. **Never hard-code copy** in pages that have an Arabic version.
-- Arabic routes live under `src/app/ar/…` and wrap content in `<div lang="ar" dir="rtl">`. The root `<html lang="en">` stays.
+- Arabic routes live under `src/app/ar/…`. `src/proxy.ts` derives the language from the path (`langFromPath`) and passes it as `x-lang`; the root layout puts `lang` and `dir` on `<html>`, so the shared header and footer flip too. Don't re-declare `dir` on a page that is wholly in one language — only on a mixed-language block (as in `/soon/[product]`).
 - Arabic uses the IBM Plex Sans Arabic font variable, applied via `[lang="ar"]` in `globals.css`.
 - **RTL rules**: use logical properties only (`ms-`/`me-`/`ps-`/`pe-`, `start-`/`end-`, `text-start`, `border-s`). Never `ml`/`mr`/`left`/`right` in shared components. Directional glyphs (← →) flip with `rtl:` variants. Keep code, flags, handles and URLs in `dir="ltr"` spans.
 - Metadata: set `alternates.languages` for `en` ↔ `ar` pairs. Show a language switch on every bilingual page.

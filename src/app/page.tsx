@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Landing } from "@/components/landing/Landing";
+import { apexAlternates } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  alternates: { languages: { en: "/", ar: "/ar" } },
+  alternates: apexAlternates("en", "/"),
 };
 
 export default async function Home() {

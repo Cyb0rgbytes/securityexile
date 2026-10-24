@@ -7,11 +7,11 @@ import { Hero } from "./Hero";
 import { NextEvent } from "./NextEvent";
 import { TerminalDemo } from "./TerminalDemo";
 
-/** The landing page in either language; the Arabic tree mirrors via dir="rtl". */
+/** The landing page in either language. lang/dir come from <html>; see src/app/layout.tsx. */
 export function Landing({ lang }: { lang: Lang }) {
   const t = getDict(lang);
   return (
-    <div lang={lang} dir={t.dir}>
+    <div>
       <div className="relative mx-auto max-w-6xl">
         <LanguageSwitch lang={lang} path={lang === "ar" ? "/ar" : "/"} className="absolute end-4 top-4 z-10 sm:end-6" />
       </div>

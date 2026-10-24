@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { langFromPath } from "@/lib/i18n";
 import { hostRedirect, hostRewrite } from "@/lib/site/hosts";
 
 // Coarse gate: bounce signed-out visitors before rendering member pages.
@@ -66,6 +67,8 @@ export default clerkMiddleware(
     const csp = contentSecurityPolicy(nonce);
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
+    // The root layout needs the language to put lang/dir on <html>; it can't read the pathname.
+    requestHeaders.set("x-lang", langFromPath(holding ?? req.nextUrl.pathname));
     requestHeaders.set("Content-Security-Policy", csp);
     const res = holding
       ? NextResponse.rewrite(new URL(holding, req.url), { request: { headers: requestHeaders } })

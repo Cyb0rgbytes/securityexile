@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalDocView } from "@/components/legal/LegalDocView";
+import { apexAlternates } from "@/lib/i18n";
 import { LEGAL } from "@/lib/i18n/legal";
 
 const doc = LEGAL.privacy.en;
@@ -7,7 +8,7 @@ const doc = LEGAL.privacy.en;
 export const metadata: Metadata = {
   title: doc.title,
   description: doc.description,
-  alternates: { canonical: "/privacy", languages: { en: "/privacy", ar: "/ar/privacy" } },
+  alternates: apexAlternates("en", "/privacy"),
 };
 
 export default function PrivacyPage() {

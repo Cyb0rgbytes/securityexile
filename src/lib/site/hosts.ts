@@ -11,6 +11,14 @@ export const APP_HOST = "app.securityexile.com";
 export const SITE_ORIGIN = `https://${APEX_HOST}`;
 export const APP_ORIGIN = `https://${APP_HOST}`;
 
+/**
+ * Absolute URL on the public site. Canonical and hreflang for apex-served pages must point
+ * here, not at metadataBase (the app host), or they advertise URLs that 308 away.
+ */
+export function apexUrl(path: string): string {
+  return `${SITE_ORIGIN}${path === "/" ? "" : path}`;
+}
+
 /** CTF arena and labs (Build Plan stages 2 and 4). Until they launch on their own servers, this Worker shows holding pages. */
 export const CTF_HOST = "ctf.securityexile.com";
 export const LABS_HOST = "labs.securityexile.com";

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Chakra_Petch, IBM_Plex_Sans, IBM_Plex_Sans_Arabic, JetBrains_Mono, Shippori_Mincho } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { clerkAppearance } from "@/lib/auth/appearance";
+import { getDict, type Lang } from "@/lib/i18n";
 import { SIGN_IN_URL, SIGN_UP_URL, usesAccountPortal } from "@/lib/auth/urls";
 import { APP_ORIGIN, SITE_ORIGIN } from "@/lib/site/hosts";
 import { FxProvider } from "@/lib/fx/FxProvider";
@@ -71,11 +72,16 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
+  const requestHeaders = await headers();
   // Per-request CSP nonce from src/proxy.ts; the inline script below only runs with it.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
+  // Also from src/proxy.ts. On Arabic pages lang/dir belong on <html>, so the shared header,
+  // footer and the [lang="ar"] font rule cover the whole document, not just the page body.
+  const lang: Lang = requestHeaders.get("x-lang") === "ar" ? "ar" : "en";
   return (
     <html
-      lang="en"
+      lang={lang}
+      dir={getDict(lang).dir}
       data-fx="full"
       suppressHydrationWarning
       className={`${mono.variable} ${plex.variable} ${chakra.variable} ${shippori.variable} ${plexArabic.variable} h-full antialiased`}

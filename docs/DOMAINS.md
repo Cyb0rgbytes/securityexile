@@ -35,6 +35,8 @@ subdomain sees the same signed-in member. A development instance can't share ses
   - When unset or relative, the embedded pages are used (dev).
 - `src/proxy.ts` CSP allows the Clerk Frontend API on both `*.clerk.accounts.dev` (dev) and `clerk.securityexile.com` (prod). Clerk's script loads under `'strict-dynamic'` via the nonce. `form-action 'self'` is unaffected because the portal is reached by navigation, not form posts.
 - `metadataBase` is `https://app.securityexile.com`, so OG images (`opengraph-image.tsx` on events and writeups) resolve to absolute URLs.
+- The apex-served pages are the exception: `apexAlternates()` (`src/lib/i18n/index.ts`) gives them absolute canonical and `hreflang` URLs on `securityexile.com`, because that is where they permanently live. Resolving them against `metadataBase` would advertise `app.` URLs that 308 away once `HOST_SPLIT` is on.
+- `src/proxy.ts` derives the page language from the path (`langFromPath()`) and passes it as `x-lang`; the root layout puts `lang` and `dir` on `<html>`, so the shared header and footer mirror on Arabic pages and the `[lang="ar"]` font rule covers the document.
 
 ## Go-live order
 

@@ -3,12 +3,12 @@ import { LanguageSwitch } from "@/components/i18n/LanguageSwitch";
 import { getDict, type Lang } from "@/lib/i18n";
 import { LEGAL_UPDATED, type LegalDoc } from "@/lib/i18n/legal";
 
-/** Shared layout for the policy pages in either language. */
+/** Shared layout for the policy pages in either language. lang/dir come from <html>. */
 export function LegalDocView({ doc, lang, path }: { doc: LegalDoc; lang: Lang; path: string }) {
   const t = getDict(lang);
   const updated = new Intl.DateTimeFormat(lang === "ar" ? "ar-AE" : "en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(LEGAL_UPDATED));
   return (
-    <article lang={lang} dir={t.dir} className="mx-auto max-w-3xl px-4 pt-16 sm:px-6">
+    <article className="mx-auto max-w-3xl px-4 pt-16 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <CursorHeading level={1} prompt="#">
           {doc.title}
