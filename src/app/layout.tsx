@@ -10,6 +10,7 @@ import { APP_ORIGIN, SITE_ORIGIN } from "@/lib/site/hosts";
 import { FxProvider } from "@/lib/fx/FxProvider";
 import { fxInitScript } from "@/lib/fx/init-script";
 import { ShinobiBackdrop } from "@/components/fx/ShinobiBackdrop";
+import { CommandPalette } from "@/components/palette/CommandPalette";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SkipLink } from "@/components/layout/SkipLink";
@@ -104,6 +105,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <FxProvider>
             <SkipLink />
             <ShinobiBackdrop />
+            <CommandPalette />
             <Header />
             <main id="main" className="flex-1">
               {children}

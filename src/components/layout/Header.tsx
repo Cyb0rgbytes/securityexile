@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Kbd } from "@/components/ui/Kbd";
+import { PaletteButton } from "@/components/palette/PaletteButton";
 import { FxToggle } from "./FxToggle";
 import { AuthControls } from "./AuthControls";
 import { MobileNav, NavLinks } from "./NavLinks";
@@ -25,10 +25,7 @@ export function Header() {
         </nav>
 
         <div className="ms-auto flex items-center gap-2 sm:gap-3 md:ms-2">
-          <span className="hidden items-center gap-1 text-xs text-fg-muted lg:flex" title="Command palette (coming soon)">
-            <Kbd>Ctrl</Kbd>
-            <Kbd>K</Kbd>
-          </span>
+          <PaletteButton />
           <div className="hidden sm:block">
             <FxToggle />
           </div>
