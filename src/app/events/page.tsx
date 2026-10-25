@@ -10,15 +10,17 @@ import { actorFor, canSeeEvent, loadViewer } from "@/lib/events/context";
 import { canEvent } from "@/lib/events/permissions";
 import { listBoard } from "@/lib/events/queries";
 import { eventPhase, type EventPhase } from "@/lib/events/timing";
+import { firstParam, type SearchParam } from "@/lib/params";
 
 export const metadata: Metadata = { title: "Events", description: "Upcoming CTFs and community events." };
 
 const TABS: EventPhase[] = ["live", "upcoming", "past"];
 const KINDS = [null, "ctf", "community"] as const;
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ tab?: string; kind?: string }> }) {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ tab?: SearchParam; kind?: SearchParam }> }) {
   await connection();
-  const sp = await searchParams;
+  const raw = await searchParams;
+  const sp = { tab: firstParam(raw.tab), kind: firstParam(raw.kind) };
   const db = getDb();
   const viewer = await loadViewer(db);
   const now = requestNow();
