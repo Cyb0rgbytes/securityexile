@@ -7,7 +7,7 @@ import { z } from "zod";
 export const RESERVED_HANDLES = new Set([
   // routes
   "admin", "api", "assets", "events", "leaderboard", "me", "onboarding", "security",
-  "settings", "sign-in", "sign-up", "teams", "u", "writeups", "war-room",
+  "settings", "sign-in", "sign-up", "stats", "teams", "u", "writeups", "war-room",
   // identities people could impersonate
   "exile", "mod", "moderator", "official", "root", "security-exile", "staff", "support", "system",
   // palette commands
