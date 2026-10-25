@@ -23,7 +23,7 @@ import { filesOrigin } from "@/lib/writeups/files";
 import { canEditWriteup } from "@/lib/writeups/permissions";
 import { chunk, findWriteupById } from "@/lib/writeups/queries";
 import { renderWriteup } from "@/lib/writeups/render";
-import { idSchema, parseTags, writeupInputSchema } from "@/lib/writeups/validation";
+import { BODY_TOO_LARGE, bodyHtmlTooLarge, idSchema, parseTags, writeupInputSchema } from "@/lib/writeups/validation";
 import { spoilerFor } from "@/lib/writeups/visibility";
 import type { ActionState } from "@/app/teams/actions";
 
@@ -100,12 +100,13 @@ export async function saveWriteup(id: string | null, _prev: SaveState, form: For
 
   const origin = filesOrigin();
   const bodyHtml = renderWriteup(v.bodyMd, { filesOrigin: origin });
+  if (bodyHtmlTooLarge(bodyHtml)) return { error: BODY_TOO_LARGE };
   const writeupId = existing?.id ?? newId();
   const base = slugify(v.title);
   const slug = existing?.slug ?? `${base}-${writeupId.slice(-4).toLowerCase()}`;
   const row = {
     title: v.title, bodyMd: v.bodyMd, bodyHtml, category: v.category || null, difficulty: v.difficulty || null,
-    eventId: event?.id ?? null, spoilerUntil: spoilerFor(event ?? null), teamId, seriesId, seriesOrder: seriesId ? v.seriesOrder : null,
+    eventId: event?.id ?? null, spoilerUntil: spoilerFor(event?.id ?? null), teamId, seriesId, seriesOrder: seriesId ? v.seriesOrder : null,
   };
   const uploadIds = uploadIdsIn(v.bodyMd, origin);
 
@@ -221,5 +222,7 @@ export async function previewMarkdown(md: string): Promise<{ html?: string; erro
   if (typeof md !== "string" || md.length > 100_000) return { error: "The writeup is over 100 000 characters." };
   const rl = await hit(getEnv(), `preview:${member.id}`, LIMITS.preview);
   if (!rl.ok) return { error: retryMessage(rl) };
-  return { html: renderWriteup(md, { filesOrigin: filesOrigin() }) };
+  const html = renderWriteup(md, { filesOrigin: filesOrigin() });
+  // Same ceiling as saving, so the preview can't ship megabytes back either.
+  return bodyHtmlTooLarge(html) ? { error: BODY_TOO_LARGE } : { html };
 }

@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
   const type = sniffImage(buf);
   if (!type) return fail(415, "Only PNG, JPEG, WebP and GIF images can be uploaded.");
   const body = stripMetadata(buf, type);
+  if (!body) return fail(415, "That image couldn't be read. Re-save it as PNG or JPEG and try again.");
 
   // Reserve the space with one conditional insert, so parallel uploads can't all pass the quota
   // check (KV rate limits aren't atomic). The R2 write happens only after the row exists.

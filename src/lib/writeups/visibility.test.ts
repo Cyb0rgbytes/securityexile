@@ -1,3 +1,4 @@
+import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import { describe, expect, it } from "vitest";
 import { canRead, isLocked, spoilerFor } from "./visibility";
 
@@ -37,8 +38,10 @@ describe("isLocked / spoilerFor", () => {
     expect(isLocked({ spoilerUntil: new Date(NOW + 1) }, NOW)).toBe(true);
     expect(isLocked({ spoilerUntil: null }, NOW)).toBe(false);
   });
-  it("follows the event end", () => {
-    expect(spoilerFor({ endsAt: new Date(5) })?.getTime()).toBe(5);
+  it("follows the event end, read at write time", () => {
+    const q = new SQLiteSyncDialect().sqlToQuery(spoilerFor("E1")!);
+    expect(q.sql).toBe('(select "events"."ends_at" from "events" where "events"."id" = ?)');
+    expect(q.params).toEqual(["E1"]);
     expect(spoilerFor(null)).toBeNull();
   });
 });
