@@ -26,6 +26,11 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link href="/rules" className="hover:text-green-bright">
+              CTF rules
+            </Link>
+          </li>
+          <li>
             <Link href="/terms" className="hover:text-green-bright">
               Terms
             </Link>

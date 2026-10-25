@@ -126,7 +126,7 @@ const termsAr: LegalDoc = {
     {
       id: "vulnerabilities",
       heading: "4. وجدت ثغرة في المنصة؟",
-      body: ["أبلغ عنها بشكل خاص عبر صفحة الإفصاح المسؤول (/security) وامنحنا وقتًا لإصلاحها. لا يُسمح باختبار المنصة نفسها بما يتجاوز ما يلزم لتأكيد الثغرة."],
+      body: ["أبلغ عنها بشكل خاص عبر صفحة الإفصاح المسؤول (⁦/security⁩) وامنحنا وقتًا لإصلاحها. لا يُسمح باختبار المنصة نفسها بما يتجاوز ما يلزم لتأكيد الثغرة."],
     },
     {
       id: "content",
@@ -158,7 +158,7 @@ const termsAr: LegalDoc = {
     {
       id: "changes",
       heading: "9. التغييرات والتواصل",
-      body: ["سنعلن عن التغييرات الجوهرية على ديسكورد ونحدّث التاريخ أعلاه. للاستفسارات: تواصل معنا عبر خادم ديسكورد أو عبر جهة الاتصال في صفحة /security."],
+      body: ["سنعلن عن التغييرات الجوهرية على ديسكورد ونحدّث التاريخ أعلاه. للاستفسارات: تواصل معنا عبر خادم ديسكورد أو عبر جهة الاتصال في صفحة ⁦/security⁩."],
     },
   ],
 };
@@ -292,7 +292,7 @@ const privacyAr: LegalDoc = {
       id: "rights",
       heading: "6. حقوقك",
       body: [
-        "بموجب قانون حماية البيانات الشخصية في دولة الإمارات (المرسوم بقانون اتحادي رقم 45 لسنة 2021) والقوانين المماثلة، يحق لك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها، أو الاعتراض على استخدامها أو تقييده، أو الحصول على نسخة منها. راسلنا على ديسكورد أو عبر جهة الاتصال في صفحة /security وسنرد خلال 30 يومًا.",
+        "بموجب قانون حماية البيانات الشخصية في دولة الإمارات (المرسوم بقانون اتحادي رقم 45 لسنة 2021) والقوانين المماثلة، يحق لك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها، أو الاعتراض على استخدامها أو تقييده، أو الحصول على نسخة منها. راسلنا على ديسكورد أو عبر جهة الاتصال في صفحة ⁦/security⁩ وسنرد خلال 30 يومًا.",
       ],
     },
     {
@@ -313,7 +313,119 @@ const privacyAr: LegalDoc = {
   ],
 };
 
+/** Competition rules for ctf.securityexile.com events (Build Plan p2-11). Not a legal draft. */
+const rulesEn: LegalDoc = {
+  title: "CTF Rules",
+  description: "How Security Exile CTF events work and what fair play means here.",
+  sections: [
+    {
+      id: "format",
+      heading: "1. Teams and format",
+      list: [
+        "Events run on ctf.securityexile.com. Play solo or in a team of up to 4.",
+        "One account per person, and one team per person per event.",
+        "Scoring is dynamic: a challenge is worth less the more teams solve it. Ties go to the team that reached the score first.",
+        "The scoreboard freezes for the final hour of each event.",
+      ],
+    },
+    {
+      id: "flags",
+      heading: "2. Flags",
+      body: ["Flags look like SE{...} unless a challenge says otherwise. Submit the whole flag, including SE{ and }. Wrong submissions are rate-limited, so brute-forcing the flag box won't work."],
+    },
+    {
+      id: "fair-play",
+      heading: "3. Fair play",
+      list: [
+        "Don't share flags, solutions or hints with anyone outside your team while an event is running.",
+        "Don't work with other teams or use more than one account.",
+        "Don't interfere with other players or their challenge instances.",
+        "Search engines, documentation, tools and AI assistants are allowed. Asking another person to solve a challenge for you is not.",
+      ],
+    },
+    {
+      id: "scope",
+      heading: "4. What's in scope",
+      body: [
+        "Only the challenge targets themselves. The CTF platform, the scoreboard, this website, Discord and the hosting infrastructure are out of scope. Denial of service against anything is forbidden.",
+        "Found a bug in the platform instead of a challenge? Report it privately through /security. Don't use it to gain points.",
+      ],
+    },
+    {
+      id: "broken",
+      heading: "5. Broken challenges and help",
+      body: ["If a challenge seems broken or a service is down, open a ticket in the Discord #ctf-support channel. Admins will confirm the fix in #announcements. Admins don't give hints beyond the ones published on the platform."],
+    },
+    {
+      id: "writeups",
+      heading: "6. Writeups",
+      body: ["Publish writeups only after the event ends. Writeups you post on Security Exile and link to the event stay hidden until it's over. The best community writeups are featured, with credit."],
+    },
+    {
+      id: "enforcement",
+      heading: "7. Disqualification",
+      body: ["Breaking these rules can lead to points being removed, disqualification from the event, or a ban under the Terms of Use. Admins' decisions on scoring are final."],
+    },
+  ],
+};
+
+const rulesAr: LegalDoc = {
+  title: "قواعد مسابقات CTF",
+  description: "كيف تسير فعاليات CTF في Security Exile وما معنى اللعب النظيف هنا.",
+  sections: [
+    {
+      id: "format",
+      heading: "1. الفرق والنظام",
+      list: [
+        "تُقام الفعاليات على ctf.securityexile.com. العب منفردًا أو ضمن فريق يصل إلى 4 أعضاء.",
+        "حساب واحد لكل شخص، وفريق واحد لكل شخص في كل فعالية.",
+        "النقاط متغيّرة: تقل قيمة التحدي كلما حلّه عدد أكبر من الفرق. عند التعادل يتقدّم الفريق الذي بلغ النتيجة أولًا.",
+        "تُجمَّد لوحة النتائج في الساعة الأخيرة من كل فعالية.",
+      ],
+    },
+    {
+      id: "flags",
+      heading: "2. الأعلام",
+      body: ["تأتي الأعلام بالشكل SE{...} ما لم يذكر التحدي غير ذلك. أرسل العلم كاملًا بما فيه SE{ و}. المحاولات الخاطئة محدودة العدد، لذا لن ينجح التخمين العشوائي."],
+    },
+    {
+      id: "fair-play",
+      heading: "3. اللعب النظيف",
+      list: [
+        "لا تشارك الأعلام أو الحلول أو التلميحات مع أي شخص خارج فريقك أثناء الفعالية.",
+        "لا تتعاون مع فرق أخرى ولا تستخدم أكثر من حساب.",
+        "لا تتدخّل في عمل اللاعبين الآخرين أو بيئات تحدياتهم.",
+        "يُسمح بمحركات البحث والوثائق والأدوات ومساعدات الذكاء الاصطناعي. أما أن تطلب من شخص آخر حل التحدي عنك فغير مسموح.",
+      ],
+    },
+    {
+      id: "scope",
+      heading: "4. ما هو ضمن النطاق",
+      body: [
+        "أهداف التحديات نفسها فقط. منصة CTF ولوحة النتائج وهذا الموقع وديسكورد والبنية التحتية للاستضافة كلها خارج النطاق. ويُحظر حجب الخدمة عن أي شيء.",
+        "وجدت ثغرة في المنصة نفسها لا في تحدٍّ؟ أبلغ عنها بشكل خاص عبر صفحة ⁦/security⁩، ولا تستخدمها لكسب النقاط.",
+      ],
+    },
+    {
+      id: "broken",
+      heading: "5. التحديات المعطّلة والمساعدة",
+      body: ["إذا بدا أن تحديًا معطّل أو أن خدمة متوقفة، افتح تذكرة في قناة ⁦#ctf-support⁩ على ديسكورد. سيؤكد المشرفون الإصلاح في قناة ⁦#announcements⁩. لا يقدّم المشرفون تلميحات غير المنشورة على المنصة."],
+    },
+    {
+      id: "writeups",
+      heading: "6. الحلول المكتوبة",
+      body: ["انشر حلولك بعد انتهاء الفعالية فقط. الحلول التي تنشرها على Security Exile وتربطها بالفعالية تبقى مخفية حتى تنتهي. ونُبرز أفضل حلول المجتمع مع نسبتها لأصحابها."],
+    },
+    {
+      id: "enforcement",
+      heading: "7. الاستبعاد",
+      body: ["قد تؤدي مخالفة هذه القواعد إلى حذف النقاط أو الاستبعاد من الفعالية أو الحظر وفق شروط الاستخدام. قرارات المشرفين بشأن النقاط نهائية."],
+    },
+  ],
+};
+
 export const LEGAL = {
   terms: { en: termsEn, ar: termsAr },
   privacy: { en: privacyEn, ar: privacyAr },
+  rules: { en: rulesEn, ar: rulesAr },
 } as const;
