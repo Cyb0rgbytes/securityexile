@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BADGES, badgeBySlug, earnedBadges } from "./badges";
+import { BADGES, badgeBySlug, earnedBadges, normalizePhrase } from "./badges";
 
 describe("BADGES catalogue", () => {
   it("has unique slugs, since the slug is also the row id", () => {
@@ -40,6 +40,30 @@ describe("earnedBadges", () => {
   it("never returns a secret badge from counting", () => {
     const huge = earnedBadges({ writeups: 9999, events: 9999 });
     expect(huge.every((b) => !b.secret)).toBe(true);
+  });
+});
+
+describe("normalizePhrase", () => {
+  it("ignores case and surrounding space", () => {
+    expect(normalizePhrase("  The Quiet One  ")).toBe("the quiet one");
+  });
+  it("collapses inner runs of whitespace, including newlines and tabs", () => {
+    expect(normalizePhrase("the\tquiet   one\nlistens")).toBe("the quiet one listens");
+  });
+  it("leaves an already-clean phrase alone", () => {
+    expect(normalizePhrase("the quiet one")).toBe("the quiet one");
+  });
+});
+
+describe("secret badges", () => {
+  it("exist, and are never awarded by counting", () => {
+    const secrets = BADGES.filter((b) => b.secret);
+    expect(secrets.length).toBeGreaterThan(0);
+    for (const s of secrets) expect(s.earned).toBeUndefined();
+  });
+  it("are excluded from the visible catalogue count", () => {
+    const visible = BADGES.filter((b) => !b.secret).length;
+    expect(visible).toBeLessThan(BADGES.length);
   });
 });
 
