@@ -1,6 +1,7 @@
 import { GlitchText } from "@/components/fx/GlitchText";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { NeonButton } from "@/components/ui/NeonButton";
+import { SECRET_PHRASE } from "@/lib/profile/secrets";
 
 export default function NotFound() {
   return (
@@ -25,6 +26,8 @@ export default function NotFound() {
         <p className="mt-1 text-fg-muted">
           hint: this isn&apos;t one of the hidden flags. keep looking.
         </p>
+        {/* It is, in fact, one of them — for anyone who reads the source. See lib/profile/secrets.ts. */}
+        <span hidden aria-hidden="true" data-scroll={SECRET_PHRASE.scout} />
       </GlassPanel>
       <div className="mt-8">
         <NeonButton href="/">Back to the dojo</NeonButton>

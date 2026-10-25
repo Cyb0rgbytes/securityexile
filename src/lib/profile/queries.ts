@@ -56,6 +56,24 @@ export async function awardBadges(db: Db, userId: string): Promise<BadgeDef[]> {
   return earned;
 }
 
+/**
+ * Award one badge by slug, for the easter eggs, which aren't earned by counting.
+ * Same conflict-free shape as awardBadges: redeeming twice is a no-op.
+ * Returns false if the slug isn't in the catalogue, so a bad slug can't create a row.
+ */
+export async function awardSecret(db: Db, userId: string, slug: string): Promise<BadgeDef | null> {
+  const def = BADGES.find((b) => b.slug === slug);
+  if (!def) return null;
+  await db.batch([
+    db
+      .insert(badges)
+      .values({ id: def.slug, slug: def.slug, name: def.name, description: def.description, tier: def.tier ?? null, secret: def.secret ?? false })
+      .onConflictDoNothing(),
+    db.insert(userBadges).values({ userId, badgeId: def.slug }).onConflictDoNothing(),
+  ]);
+  return def;
+}
+
 export type HeldBadge = { slug: string; name: string; description: string | null; tier: string | null; awardedAt: Date };
 
 /** A member's badges, newest first. Secret ones are only here once earned, so they're safe to show. */

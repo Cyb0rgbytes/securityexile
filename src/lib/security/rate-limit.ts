@@ -60,6 +60,8 @@ export const LIMITS = {
   upload: { max: 20, windowSec: 3600 },
   preview: { max: 120, windowSec: 3600 },
   writeupSave: { max: 120, windowSec: 3600 },
+  /** Easter-egg phrases are submitted blind, so this is the brute-force budget. */
+  secretRedeem: { max: 20, windowSec: 3600, strict: true },
 } as const satisfies Record<string, Limit>;
 
 /** Unpublished writeups a member may keep (each row can be up to ~2 MB with its rendered HTML). */
