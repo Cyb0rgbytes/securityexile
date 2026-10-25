@@ -24,7 +24,7 @@ export const CTF_HOST = "ctf.securityexile.com";
 export const LABS_HOST = "labs.securityexile.com";
 
 /** Paths the apex serves itself; everything else belongs to the app. */
-const APEX_PATHS = [/^\/$/, /^\/(security|terms|privacy|ar)\/?$/, /^\/ar\/(terms|privacy)\/?$/, /^\/(robots\.txt|sitemap\.xml|icon\.png|apple-icon\.png|opengraph-image.*)$/, /^\/__clerk(\/|$)/];
+const APEX_PATHS = [/^\/$/, /^\/(security|terms|privacy|rules|ar)\/?$/, /^\/ar\/(terms|privacy|rules)\/?$/, /^\/(robots\.txt|sitemap\.xml|icon\.png|apple-icon\.png|opengraph-image.*)$/, /^\/__clerk(\/|$)/];
 
 /**
  * Where a request should go instead, or null to serve it here.

@@ -42,7 +42,7 @@ describe("hostRedirect", () => {
     expect(go("https://app.securityexile.com/", false)).toBe("https://securityexile.com/");
   });
   it("apex keeps the bilingual landing and policy pages", () => {
-    for (const p of ["/terms", "/privacy", "/ar", "/ar/terms", "/ar/privacy"]) expect(go(`https://securityexile.com${p}`)).toBeNull();
+    for (const p of ["/terms", "/privacy", "/rules", "/ar", "/ar/terms", "/ar/privacy", "/ar/rules"]) expect(go(`https://securityexile.com${p}`)).toBeNull();
     expect(go("https://securityexile.com/ar/writeups")).toBe("https://app.securityexile.com/ar/writeups");
   });
   it("app pages and other hosts are served as-is", () => {

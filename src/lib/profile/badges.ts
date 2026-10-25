@@ -57,7 +57,26 @@ export const BADGES: BadgeDef[] = [
     tier: "silver",
     earned: (c) => c.events >= 5,
   },
+  // Easter eggs. Found, not earned: the phrase that unlocks each one is mapped server-side in
+  // secrets.ts, so the answers are never in the client bundle.
+  {
+    slug: "wiretap",
+    name: "Wiretap",
+    description: "Read the response headers and found what was hidden in them.",
+    secret: true,
+  },
+  {
+    slug: "scout",
+    name: "Scout",
+    description: "Went looking where there was supposed to be nothing.",
+    secret: true,
+  },
 ];
+
+/** Phrases are compared loosely: case, surrounding space and inner runs of space don't matter. */
+export function normalizePhrase(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 /** Badges a member's contributions have earned. Secret badges never come from counting. */
 export function earnedBadges(c: Contributions): BadgeDef[] {

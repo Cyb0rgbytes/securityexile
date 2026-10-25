@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { langFromPath } from "@/lib/i18n";
+import { SECRET_PHRASE } from "@/lib/profile/secrets";
 import { hostRedirect, hostRewrite } from "@/lib/site/hosts";
 
 // Coarse gate: bounce signed-out visitors before rendering member pages.
@@ -74,6 +75,8 @@ export default clerkMiddleware(
       ? NextResponse.rewrite(new URL(holding, req.url), { request: { headers: requestHeaders } })
       : NextResponse.next({ request: { headers: requestHeaders } });
     res.headers.set("Content-Security-Policy", csp);
+    // Easter egg: for anyone who reads the response headers. See lib/profile/secrets.ts.
+    res.headers.set("x-shinobi-scroll", SECRET_PHRASE.wiretap);
     return res;
   },
   // Session tokens are only accepted when minted for the origin serving this

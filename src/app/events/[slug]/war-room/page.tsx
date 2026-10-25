@@ -15,13 +15,14 @@ import { AutoRefresh } from "./AutoRefresh";
 import { Board } from "./Board";
 import type { CardData } from "./ChallengeCard";
 import { NotesPanel } from "./NotesPanel";
+import { firstParam, type SearchParam } from "@/lib/params";
 
 export const metadata: Metadata = { title: "War room", robots: { index: false } };
 
-export default async function WarRoomPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ cat?: string }> }) {
+export default async function WarRoomPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ cat?: SearchParam }> }) {
   await connection();
   const { slug } = await params;
-  const { cat } = await searchParams;
+  const cat = firstParam((await searchParams).cat);
   const ctx = await loadWarRoom(slug, { forWrite: false });
   if ("error" in ctx) notFound();
   const { db, member, event, team, teamRole, registration, writable } = ctx;

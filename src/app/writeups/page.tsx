@@ -9,6 +9,7 @@ import { DIFFICULTIES } from "@/lib/db/enums";
 import { getDb } from "@/lib/db/client";
 import { requestNow } from "@/lib/events/clock";
 import { FOCUS_CATEGORIES } from "@/lib/teams/validation";
+import { firstParam, type SearchParam } from "@/lib/params";
 import { listWriteups } from "@/lib/writeups/queries";
 import { loadWriteupViewer } from "@/lib/writeups/viewer";
 
@@ -18,9 +19,10 @@ const TABS = ["trending", "newest", "top"] as const;
 type Tab = (typeof TABS)[number];
 type SP = { tab?: string; category?: string; level?: string; tag?: string; q?: string };
 
-export default async function WriteupsPage({ searchParams }: { searchParams: Promise<SP> }) {
+export default async function WriteupsPage({ searchParams }: { searchParams: Promise<Record<keyof SP, SearchParam>> }) {
   await connection();
-  const sp = await searchParams;
+  const raw = await searchParams;
+  const sp: SP = { tab: firstParam(raw.tab), category: firstParam(raw.category), level: firstParam(raw.level), tag: firstParam(raw.tag), q: firstParam(raw.q) };
   const db = getDb();
   const viewer = await loadWriteupViewer(db);
   const now = requestNow();

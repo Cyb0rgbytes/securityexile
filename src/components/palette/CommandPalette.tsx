@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { redeemSecret } from "@/app/me/actions";
 import { filterCommands, type Command } from "@/lib/palette/commands";
 
 /** Dispatch on window to open the palette from anywhere (the header button does). */
@@ -16,6 +17,8 @@ export function CommandPalette() {
   const ref = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [message, setMessage] = useState("");
+  const [pending, startTransition] = useTransition();
   const router = useRouter();
   const listId = useId();
   const results = filterCommands(query);
@@ -23,6 +26,7 @@ export function CommandPalette() {
   const open = useCallback(() => {
     setQuery("");
     setActive(0);
+    setMessage("");
     if (!ref.current?.open) ref.current?.showModal();
   }, []);
 
@@ -49,7 +53,23 @@ export function CommandPalette() {
   }
 
   function onListKeyDown(e: React.KeyboardEvent) {
-    if (results.length === 0) return;
+    // Nothing matched: Enter offers it to the server as an easter-egg phrase. A wrong guess
+    // and an ordinary mistyped search look identical, here and in the response.
+    if (results.length === 0) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const phrase = query;
+      startTransition(async () => {
+        const res = await redeemSecret(phrase);
+        if (res.ok) {
+          setMessage(res.ok);
+          setQuery("");
+        } else if (res.error) {
+          setMessage(res.error);
+        }
+      });
+      return;
+    }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
@@ -94,8 +114,14 @@ export function CommandPalette() {
         />
       </div>
 
+      {message && (
+        <p role="status" className="border-b border-line px-4 py-2 text-sm text-green-bright">
+          {message}
+        </p>
+      )}
+
       {results.length === 0 ? (
-        <p className="p-4 text-sm text-fg-muted">No matches.</p>
+        <p className="p-4 text-sm text-fg-muted">{pending ? "Checking…" : "No matches."}</p>
       ) : (
         <ul id={listId} role="listbox" aria-label="Results" className="max-h-[50vh] overflow-y-auto p-1">
           {results.map((c, i) => (

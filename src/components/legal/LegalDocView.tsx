@@ -3,8 +3,11 @@ import { LanguageSwitch } from "@/components/i18n/LanguageSwitch";
 import { getDict, type Lang } from "@/lib/i18n";
 import { LEGAL_UPDATED, type LegalDoc } from "@/lib/i18n/legal";
 
-/** Shared layout for the policy pages in either language. lang/dir come from <html>. */
-export function LegalDocView({ doc, lang, path }: { doc: LegalDoc; lang: Lang; path: string }) {
+/**
+ * Shared layout for the policy and rules pages in either language. lang/dir come from <html>.
+ * `draft` shows the "pending legal review" note (Terms, Privacy); the CTF rules aren't a legal draft.
+ */
+export function LegalDocView({ doc, lang, path, draft = true }: { doc: LegalDoc; lang: Lang; path: string; draft?: boolean }) {
   const t = getDict(lang);
   const updated = new Intl.DateTimeFormat(lang === "ar" ? "ar-AE" : "en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(LEGAL_UPDATED));
   return (
@@ -18,9 +21,11 @@ export function LegalDocView({ doc, lang, path }: { doc: LegalDoc; lang: Lang; p
       <p className="mt-4 font-mono text-xs text-fg-muted">
         {t.legal.updated}: <time dateTime={LEGAL_UPDATED}>{updated}</time>
       </p>
-      <p role="note" className="mt-3 rounded border border-line-strong p-3 text-sm text-fg-muted">
-        {t.legal.review}
-      </p>
+      {draft && (
+        <p role="note" className="mt-3 rounded border border-line-strong p-3 text-sm text-fg-muted">
+          {t.legal.review}
+        </p>
+      )}
 
       <nav aria-label={t.legal.contents} className="mt-8 rounded border border-line p-4 text-sm">
         <p className="font-mono text-xs text-fg-muted">{t.legal.contents}</p>
