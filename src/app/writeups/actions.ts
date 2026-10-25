@@ -15,7 +15,7 @@ import { isUniqueViolation } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
 import { auditLog, events, uploads, writeupSeries, writeupTags, writeups } from "@/lib/db/schema";
 import { slugify } from "@/lib/events/validation";
-import { recountXp } from "@/lib/profile/queries";
+import { awardBadges, recountXp } from "@/lib/profile/queries";
 import { hit, LIMITS, MAX_DRAFTS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
 import { findMembershipOf } from "@/lib/teams/queries";
@@ -148,6 +148,9 @@ export async function setPublished(id: string, publish: boolean): Promise<Action
     // Publishing is what earns the XP, so the author's total is recounted alongside it.
     ...recountXp(db, w.authorId),
   ]);
+  // After the batch: badges are earned from the counts as they now stand. Monotonic and
+  // conflict-free, so unpublishing leaves earned badges alone by design.
+  if (publish) await awardBadges(db, w.authorId);
   revalidateWriteups(member.handle, w.slug);
   return { ok: publish ? "Published." : "Moved back to drafts." };
 }
