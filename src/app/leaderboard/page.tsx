@@ -19,7 +19,11 @@ export default async function LeaderboardPage() {
       </CursorHeading>
       <p className="mt-4 text-fg-muted">
         XP comes from publishing writeups ({XP_FOR.publishedWriteup} each) and playing events ({XP_FOR.eventPlayed} each). Upvotes don&apos;t
-        move it, so the board can&apos;t be traded up.
+        move it, so the board can&apos;t be traded up.{" "}
+        <Link href="/leaderboard/seasons" className="text-green hover:text-green-bright">
+          Season standings
+        </Link>{" "}
+        count the same things inside a season&apos;s dates.
       </p>
 
       {members.length === 0 ? (

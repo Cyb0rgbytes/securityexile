@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq, gt, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
-import { badges, userBadges, users } from "@/lib/db/schema";
+import { badges, seasons, userBadges, users } from "@/lib/db/schema";
 import { BADGES, earnedBadges, type BadgeDef, type Contributions } from "./badges";
-import { RANK_FLOOR, XP_FOR, type RankTier } from "./xp";
+import type { Season } from "./seasons";
+import { RANK_FLOOR, XP_FOR, xpFor, type RankTier } from "./xp";
 
 export type RankedMember = { handle: string; displayName: string | null; avatarUrl: string | null; xp: number; rankTier: RankTier };
 
@@ -19,6 +20,45 @@ export async function topMembers(db: Db, limit = 50): Promise<RankedMember[]> {
     .where(and(isNotNull(users.handle), gt(users.xp, 0)))
     .orderBy(desc(users.xp), asc(users.handle))
     .limit(limit) as Promise<RankedMember[]>;
+}
+
+export async function listSeasons(db: Db): Promise<Season[]> {
+  return db.select().from(seasons).orderBy(desc(seasons.startsAt));
+}
+
+export type SeasonMember = { handle: string; displayName: string | null; xp: number; writeups: number; events: number };
+
+/**
+ * One season's board, recounted from the same rows as xpExpression() with the same rules
+ * (published and not hidden; distinct events whose roster lists the member), restricted to
+ * writeups published, and events starting, inside [startsAt, endsAt). Nothing is stored, so
+ * a hide, delete or roster change shows up here on the next load, as it does all-time.
+ */
+export async function seasonStandings(db: Db, season: Pick<Season, "startsAt" | "endsAt">, limit = 50): Promise<SeasonMember[]> {
+  const from = season.startsAt.getTime();
+  const to = season.endsAt.getTime();
+  const rows = await db.all<{ handle: string; displayName: string | null; writeups: number; events: number }>(sql`
+    select u.handle as handle, u.display_name as displayName, sum(c.w) as writeups, sum(c.e) as events
+    from (
+      select w.author_id as uid, 1 as w, 0 as e from writeups w
+        where w.published_at is not null and w.hidden_at is null and w.published_at >= ${from} and w.published_at < ${to}
+      union all
+      select played.uid, 0, 1 from (
+        select distinct j.value as uid, er.event_id from event_registrations er
+          join events e on e.id = er.event_id, json_each(er.roster_json) j
+          where e.starts_at >= ${from} and e.starts_at < ${to}
+      ) played
+    ) c
+    join users u on u.id = c.uid
+    where u.handle is not null
+    group by u.id
+    order by sum(c.w) * ${XP_FOR.publishedWriteup} + sum(c.e) * ${XP_FOR.eventPlayed} desc, u.handle asc
+    limit ${limit}`);
+  return rows.map((r) => {
+    const writeups = Number(r.writeups);
+    const events = Number(r.events);
+    return { handle: r.handle, displayName: r.displayName, writeups, events, xp: xpFor({ writeups, events }) };
+  });
 }
 
 /** What a member has contributed, counted exactly the way the XP recount counts it. */
