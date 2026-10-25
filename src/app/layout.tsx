@@ -59,6 +59,9 @@ const plexArabic = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   // Absolute OG/canonical URLs resolve against the app host, where the shared pages live.
   metadataBase: new URL(APP_ORIGIN),
+  // Fallback share card; pages with their own opengraph-image (events, writeups) override it.
+  openGraph: { siteName: "Security Exile", images: [{ url: "/assets/brand/social/og-default.png", width: 1200, height: 630 }] },
+  twitter: { card: "summary_large_image" },
   title: {
     default: "Security Exile — learn security by doing",
     template: "%s · Security Exile",
