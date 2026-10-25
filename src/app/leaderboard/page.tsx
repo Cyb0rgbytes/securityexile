@@ -31,10 +31,10 @@ export default async function LeaderboardPage() {
         move it, so the board can&apos;t be traded up. A team&apos;s total is its members&apos; XP added together.
       </p>
       <nav aria-label="Boards" className="mt-4 flex gap-4 font-mono text-sm">
-        <a href="#members" className="text-green hover:text-green-bright">
+        <a href="#members" className="inline-flex min-h-6 items-center text-green hover:text-green-bright">
           members
         </a>
-        <a href="#teams" className="text-green hover:text-green-bright">
+        <a href="#teams" className="inline-flex min-h-6 items-center text-green hover:text-green-bright">
           teams
         </a>
       </nav>
