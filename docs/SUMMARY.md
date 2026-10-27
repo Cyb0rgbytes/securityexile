@@ -36,9 +36,9 @@ Code: https://github.com/Cyb0rgbytes/securityexile. Detailed log: [`docs/PROGRES
 - **Uploads are checked.** File type is read from the file's actual bytes, photo location data is stripped, and size, rate and storage limits apply.
 - **Language is set on `<html>`.** `src/proxy.ts` derives it from the path and the root layout applies `lang`/`dir`, so Arabic pages are correctly announced and mirrored.
 
-## Apex split — not switched on yet
+## Apex split — on since 2026-10-26
 
-`HOST_SPLIT` in `wrangler.jsonc` is still `"off"`, so the bilingual landing and the policy pages are reachable on `app.securityexile.com` rather than the apex. Turning it on requires, in order (`docs/DOMAINS.md` Phase 3): delete the Cloudflare redirect rule `securityexile.com → app.securityexile.com`, add `securityexile.com` and `www.` as Worker custom domains, then flip the var. Doing it out of order loops the apex.
+`HOST_SPLIT` in `wrangler.jsonc` is `"on"`: the bilingual landing and the policy pages live on `securityexile.com`, and everything else 308s to `app.securityexile.com` (`docs/DOMAINS.md` Phase 3). Clerk runs on its production instance, so both hosts share one session. Turning the split off again needs the Cloudflare redirect rule `securityexile.com → app.securityexile.com` back first, or the apex serves the whole app.
 
 ## Open items
 
