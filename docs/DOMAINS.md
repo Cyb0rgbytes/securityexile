@@ -28,7 +28,7 @@ subdomain sees the same signed-in member. A development instance can't share ses
   - `app.securityexile.com/`: signed-in → `/writeups`; signed-out → the apex landing.
   - Any other host (localhost, `*.workers.dev` previews) is untouched.
   - `hostRewrite()` renders `/soon/ctf` or `/soon/labs` for `ctf.` / `labs.`. It isn't behind `HOST_SPLIT`: those hosts only reach this Worker once you attach them as custom domains, and when CTFd or the labs launch you point their DNS at the new servers instead.
-  - The whole split is switched by the Worker var `HOST_SPLIT` (`wrangler.jsonc`), which defaults to `"off"`.
+  - The whole split is switched by the Worker var `HOST_SPLIT` (`wrangler.jsonc`), which has been `"on"` since 2026-10-26.
 - `src/lib/auth/urls.ts` reads `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `_SIGN_UP_URL`.
   - When these are absolute (`https://accounts.…`), `ClerkProvider` sends sign-in there and only allows the app and apex as redirect targets (`allowedRedirectOrigins`).
   - The old `/sign-in` and `/sign-up` routes then forward to the portal, keeping the query string.
@@ -50,7 +50,7 @@ Do these in order. Steps marked **(you)** are dashboard work.
 3. `npx wrangler d1 migrations apply DB --remote`. This applies 0003 (writeups columns, uploads) and 0004 (hearts, organizer flag). It **must** run before the merge, or every writeup query fails on missing columns.
 4. Merge to `main`; Workers Builds deploys.
 
-### Phase 2: Clerk production + `accounts.` subdomain
+### Phase 2: Clerk production + `accounts.` subdomain ✅ done (2026-10-26)
 1. **(you)** Clerk dashboard → create the **Production** instance, application domain `securityexile.com`.
 2. **(you)** In Cloudflare DNS, add the CNAMEs Clerk lists, all **DNS only (grey cloud)**. Proxied records break Clerk's certificates.
    - `clerk` → `frontend-api.clerk.services`
@@ -70,7 +70,7 @@ Do these in order. Steps marked **(you)** are dashboard work.
 5. Redeploy. Check: sign in on `app.` → bounce to `accounts.` → back on `app.` signed in, with no CSP errors in the console.
 6. Production users are a fresh Clerk user pool, so dev-instance accounts don't carry over. Rows in `users` are keyed by `clerk_id`, so members re-join and onboard again. Migrate users with Clerk's export/import first if that matters.
 
-### Phase 3: Apex/app split
+### Phase 3: Apex/app split ✅ done (2026-10-26)
 Do this only after Phase 2, so the apex shares the session.
 1. **(you)** Cloudflare → Rules → delete the redirect rule `securityexile.com → app.securityexile.com`.
 2. **(you)** Workers → `securityexile` → Settings → Domains & Routes → add custom domains `securityexile.com` and `www.securityexile.com`.
