@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Restore drill for Build Plan p1-08: proves a backup restores, without touching any real database.
-//   node scripts/restore-drill.mjs <securityexile-YYYY-MM-DD.7z>      7-Zip asks for the password
-//   node scripts/restore-drill.mjs <extracted backup directory>
-// Extracts into a temp directory, checks the SQL against the manifest's hash, loads it into a
+//   node scripts/restore-drill.mjs <securityexile-YYYY-MM-DD.tar.gz.age> --key <age identity file>
+//   node scripts/restore-drill.mjs <backup .tar.gz or directory>          (unencrypted, for testing)
+// Decrypts into a temp directory, checks the SQL against the manifest's hash, loads it into a
 // throwaway local D1 (--persist-to the temp dir), and compares every table's row count and the
 // R2 object count with the manifest. The temp directory, plaintext included, is deleted on exit.
 import { execFileSync } from "node:child_process";
@@ -12,7 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const input = process.argv[2];
-if (!input || !existsSync(input)) throw new Error("usage: restore-drill.mjs <backup .7z or directory>");
+const key = process.argv.includes("--key") ? process.argv[process.argv.indexOf("--key") + 1] : null;
+if (!input || !existsSync(input)) throw new Error("usage: restore-drill.mjs <backup> [--key <identity file>]");
 
 const win = process.platform === "win32";
 const path = (p) => (win ? `"${p}"` : p);
@@ -21,18 +22,17 @@ const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", shell: wi
 const tmp = mkdtempSync(join(tmpdir(), "se-restore-"));
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
 
-/** 7z on PATH, or where the Windows installer puts it. */
-function sevenZip() {
-  const installed = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"]].filter(Boolean).map((p) => join(p, "7-Zip", "7z.exe"));
-  return installed.find((p) => existsSync(p)) ?? "7z";
-}
-
 let dir = input;
 if (!statSync(input).isDirectory()) {
+  let archive = input;
+  if (input.endsWith(".age")) {
+    if (!key) throw new Error("an .age backup needs --key <identity file>");
+    archive = join(tmp, "backup.tar.gz");
+    run("age", ["--decrypt", "--identity", path(key), "--output", path(archive), path(input)]);
+  }
   dir = join(tmp, "backup");
   mkdirSync(dir);
-  // Inherited stdio so 7-Zip prompts for the password itself: it never touches argv or the history.
-  execFileSync(sevenZip(), ["x", input, `-o${dir}`, "-bso0"], { stdio: "inherit" });
+  run("tar", ["-xzf", path(archive), "-C", path(dir)]);
 }
 
 const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
