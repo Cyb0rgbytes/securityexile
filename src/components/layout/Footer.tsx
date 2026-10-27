@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { getDict, localePath, type Lang } from "@/lib/i18n";
 import { DISCORD_INVITE_URL } from "@/lib/links";
 
-export function Footer() {
+export function Footer({ lang }: { lang: Lang }) {
+  const t = getDict(lang);
   return (
     <footer className="mt-24 border-t border-line bg-bg-deep/70 backdrop-blur-sm">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6">
@@ -11,7 +13,7 @@ export function Footer() {
           </span>
           <div>
             <p className="font-display text-sm font-semibold tracking-wide text-fg">Security Exile</p>
-            <p className="mt-0.5 text-sm text-fg-muted">Hack the planet, responsibly.</p>
+            <p className="mt-0.5 text-sm text-fg-muted">{t.footer.tagline}</p>
           </div>
         </div>
         <ul className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-fg-muted">
@@ -21,28 +23,29 @@ export function Footer() {
             </a>
           </li>
           <li>
+            {/* English only: there's no Arabic disclosure page. */}
             <Link href="/security" className="hover:text-green-bright">
-              Responsible disclosure
+              {t.footer.disclosure}
             </Link>
           </li>
           <li>
-            <Link href="/rules" className="hover:text-green-bright">
-              CTF rules
+            <Link href={localePath(lang, "/rules")} className="hover:text-green-bright">
+              {t.footer.rules}
             </Link>
           </li>
           <li>
-            <Link href="/terms" className="hover:text-green-bright">
-              Terms
+            <Link href={localePath(lang, "/terms")} className="hover:text-green-bright">
+              {t.footer.terms}
             </Link>
           </li>
           <li>
-            <Link href="/privacy" className="hover:text-green-bright">
-              Privacy
+            <Link href={localePath(lang, "/privacy")} className="hover:text-green-bright">
+              {t.footer.privacy}
             </Link>
           </li>
           <li>
-            <Link href="/ar" hrefLang="ar" lang="ar" className="hover:text-green-bright">
-              العربية
+            <Link href={t.switchTo.href} hrefLang={t.switchTo.hrefLang} lang={t.switchTo.hrefLang} className="hover:text-green-bright">
+              {t.switchTo.label}
             </Link>
           </li>
           <li>

@@ -43,6 +43,8 @@ export async function toggleVote(writeupId: string): Promise<ActionState & { vot
   if (!ctx) return notFound;
   const { db, member, w } = ctx;
   if (!w.publishedAt) return { error: "Publish first." };
+  // Staff can still read a hidden writeup; the buttons are gone, and the action refuses too.
+  if (w.hiddenAt) return { error: "This writeup is hidden." };
   if (!canVote(w, member.id)) return { error: "You can't upvote your own writeup." };
   const rl = await hit(getEnv(), `vote:${member.id}`, LIMITS.voteBookmark);
   if (!rl.ok) return { error: retryMessage(rl) };
@@ -65,6 +67,7 @@ export async function toggleHeart(writeupId: string): Promise<ActionState & { lo
   if (!ctx) return notFound;
   const { db, member, w } = ctx;
   if (!w.publishedAt) return { error: "Publish first." };
+  if (w.hiddenAt) return { error: "This writeup is hidden." };
   if (!canVote(w, member.id)) return { error: "You can't love your own writeup." };
   const rl = await hit(getEnv(), `vote:${member.id}`, LIMITS.voteBookmark);
   if (!rl.ok) return { error: retryMessage(rl) };
@@ -93,9 +96,12 @@ export async function toggleBookmark(writeupId: string): Promise<ActionState & {
   return { saved: !had };
 }
 
-/** Comments that still have words in them; soft-deleted ones keep the thread shape but don't count. */
+/**
+ * Comments readers can actually see. Soft-deleted and moderator-hidden ones keep the thread
+ * shape but don't count, so the number on a card matches what the page shows.
+ */
 function liveComments(db: ReturnType<typeof getDb>, writeupId: string) {
-  return db.$count(comments, and(eq(comments.writeupId, writeupId), isNull(comments.deletedAt)));
+  return db.$count(comments, and(eq(comments.writeupId, writeupId), isNull(comments.deletedAt), isNull(comments.hiddenAt)));
 }
 
 async function depthOf(db: ReturnType<typeof getDb>, parentId: string): Promise<number> {
@@ -184,6 +190,7 @@ export async function setCommentHidden(commentId: string, hidden: boolean): Prom
   if (!isStaff(member.platformRole)) return { error: "Comment not found." };
   await db.batch([
     db.update(comments).set({ hiddenAt: hidden ? new Date() : null }).where(eq(comments.id, c.id)),
+    db.update(writeups).set({ commentCount: liveComments(db, w.id) }).where(eq(writeups.id, w.id)),
     db.insert(auditLog).values(auditEntry({ teamId: null, actorId: member.id, action: hidden ? "comment.hide" : "comment.unhide", targetId: c.id, meta: { writeup: w.title } })),
   ]);
   revalidatePath(await pathFor(db, w));

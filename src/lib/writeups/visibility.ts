@@ -1,6 +1,6 @@
-import { and, eq, gt, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { isStaff, type PlatformRole } from "@/lib/auth/platform";
-import { writeups } from "@/lib/db/schema";
+import { events, writeups } from "@/lib/db/schema";
 
 export interface WriteupVis {
   authorId: string;
@@ -29,9 +29,13 @@ export function canRead(w: WriteupVis, v: Viewer, now: number): boolean {
   return true;
 }
 
-/** Spoiler lock follows the linked event's end. */
-export function spoilerFor(event: { endsAt: Date } | null): Date | null {
-  return event ? event.endsAt : null;
+/**
+ * Spoiler lock follows the linked event's end, read inside the write itself rather than from an
+ * earlier query: if an organiser extends the event between saveWriteup's read and its write, the
+ * extension's re-lock can miss this row, and a stale end would unlock the writeup early.
+ */
+export function spoilerFor(eventId: string | null): SQL | null {
+  return eventId ? sql`(select ${events.endsAt} from ${events} where ${events.id} = ${eventId})` : null;
 }
 
 /** Rows a viewer may see in lists: public writeups, plus their team's locked ones. Never drafts or hidden. */
