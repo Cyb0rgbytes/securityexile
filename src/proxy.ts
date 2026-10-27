@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { langFromPath } from "@/lib/i18n";
+import { langFromPath } from "@/lib/i18n/path";
 import { SECRET_PHRASE } from "@/lib/profile/secrets";
 import { hostRedirect, hostRewrite } from "@/lib/site/hosts";
 

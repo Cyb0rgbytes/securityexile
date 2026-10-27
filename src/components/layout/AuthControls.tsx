@@ -1,6 +1,7 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import type { Dict } from "@/lib/i18n";
 
 const ghost =
   "notch notch-sm whitespace-nowrap px-3 py-1.5 font-display text-xs font-semibold text-fg shadow-[inset_0_0_0_1px_var(--se-line-strong)] transition-[color,box-shadow] hover:text-green-bright hover:shadow-[inset_0_0_0_1px_var(--se-green-bright)]";
@@ -16,7 +17,7 @@ function DossierIcon() {
   );
 }
 
-export function AuthControls() {
+export function AuthControls({ t }: { t: Pick<Dict["chrome"], "signIn" | "join" | "dossier" | "myWriteups" | "bookmarks"> }) {
   return (
     <>
       <Show when="signed-out">
@@ -25,21 +26,21 @@ export function AuthControls() {
             the current page as redirect_url. */}
         <SignInButton mode="redirect" signUpForceRedirectUrl="/onboarding">
           <button type="button" className={ghost}>
-            sign in
+            {t.signIn}
           </button>
         </SignInButton>
         <SignUpButton mode="redirect" forceRedirectUrl="/onboarding">
           <button type="button" className={`${solid} hidden sm:inline-block`}>
-            join
+            {t.join}
           </button>
         </SignUpButton>
       </Show>
       <Show when="signed-in">
         <UserButton>
           <UserButton.MenuItems>
-            <UserButton.Link label="Your dossier" labelIcon={<DossierIcon />} href="/u/me" />
-            <UserButton.Link label="My writeups" labelIcon={<DossierIcon />} href="/me/writeups" />
-            <UserButton.Link label="Bookmarks" labelIcon={<DossierIcon />} href="/me/bookmarks" />
+            <UserButton.Link label={t.dossier} labelIcon={<DossierIcon />} href="/u/me" />
+            <UserButton.Link label={t.myWriteups} labelIcon={<DossierIcon />} href="/me/writeups" />
+            <UserButton.Link label={t.bookmarks} labelIcon={<DossierIcon />} href="/me/bookmarks" />
           </UserButton.MenuItems>
         </UserButton>
       </Show>
