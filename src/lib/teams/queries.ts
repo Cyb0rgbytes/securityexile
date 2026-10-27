@@ -63,6 +63,27 @@ export async function listTeams(db: Db) {
     .orderBy(desc(count(teamMembers.userId)), asc(teams.name));
 }
 
+export type RankedTeam = { tag: string; name: string; logoKey: string | null; members: number; xp: number };
+
+/**
+ * Team standings: the members' XP summed. users.xp is already the recounted total (docs/XP.md),
+ * so summing it inherits the same rules, and the one-team-per-member index means nobody counts
+ * twice. Teams on zero aren't ranked, mirroring topMembers(); ties break on name.
+ */
+export async function topTeams(db: Db, limit = 50): Promise<RankedTeam[]> {
+  const xp = sql<number>`coalesce(sum(${users.xp}), 0)`;
+  const rows = await db
+    .select({ tag: teams.tag, name: teams.name, logoKey: teams.logoKey, members: count(teamMembers.userId), xp })
+    .from(teams)
+    .innerJoin(teamMembers, eq(teamMembers.teamId, teams.id))
+    .innerJoin(users, eq(users.id, teamMembers.userId))
+    .groupBy(teams.id)
+    .having(sql`${xp} > 0`)
+    .orderBy(desc(xp), asc(teams.name))
+    .limit(limit);
+  return rows.map((r) => ({ ...r, xp: Number(r.xp) }));
+}
+
 export async function listPendingRequests(db: Db, teamId: string) {
   return db
     .select({

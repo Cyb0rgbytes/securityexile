@@ -3,6 +3,7 @@ import { LocalTime } from "@/components/events/LocalTime";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import type { SeasonMember } from "@/lib/profile/queries";
 import type { Season, SeasonStatus } from "@/lib/profile/seasons";
+import { withPlaces } from "@/lib/profile/standings";
 
 const th = "py-2 pe-4 text-start font-normal";
 
@@ -54,9 +55,9 @@ export function SeasonBoard({ season, status, members, level = 2 }: { season: Se
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {members.map((m, i) => (
+              {withPlaces(members).map((m) => (
                 <tr key={m.handle}>
-                  <td className="py-2 pe-4 font-mono text-fg-muted">{i + 1}</td>
+                  <td className="py-2 pe-4 font-mono text-fg-muted">{m.place}</td>
                   <td className="py-2 pe-4">
                     <Link href={`/u/${m.handle}`} className="text-fg hover:text-green-bright">
                       <span dir="ltr">@{m.handle}</span>

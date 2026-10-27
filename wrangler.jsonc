@@ -61,6 +61,6 @@
     "FILES_ORIGIN": "https://files.securityexile.com",
     // Apex/app host split in src/proxy.ts. Turn "on" only after securityexile.com is a Worker
     // custom domain and the old apex → app redirect rule is gone (docs/DOMAINS.md), or it loops.
-    "HOST_SPLIT": "off"
+    "HOST_SPLIT": "on"
   }
 }

@@ -1,25 +1,15 @@
 import { apexUrl } from "@/lib/site/hosts";
 import { ar } from "./ar";
 import { en, type Dict } from "./en";
+import { altPath, type Lang } from "./path";
 
-export type Lang = "en" | "ar";
+export { altPath, langFromPath, localePath, type Lang } from "./path";
 export type { Dict };
 
 const DICTS: Record<Lang, Dict> = { en, ar };
 
 export function getDict(lang: Lang): Dict {
   return DICTS[lang];
-}
-
-/** Path of the same page in the other language: "/terms" ↔ "/ar/terms", "/" ↔ "/ar". */
-export function altPath(lang: Lang, path: string): string {
-  if (lang === "ar") return path.replace(/^\/ar(?=\/|$)/, "") || "/";
-  return path === "/" ? "/ar" : `/ar${path}`;
-}
-
-/** The language a path is served in. src/proxy.ts passes this to the root layout as x-lang. */
-export function langFromPath(path: string): Lang {
-  return /^\/ar(\/|$)/.test(path) ? "ar" : "en";
 }
 
 /**

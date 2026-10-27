@@ -11,9 +11,11 @@ import { FxProvider } from "@/lib/fx/FxProvider";
 import { fxInitScript } from "@/lib/fx/init-script";
 import { ShinobiBackdrop } from "@/components/fx/ShinobiBackdrop";
 import { CommandPalette } from "@/components/palette/CommandPalette";
+import { commandsFor } from "@/lib/palette/catalog";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SkipLink } from "@/components/layout/SkipLink";
+import { LangSync } from "@/components/i18n/LangSync";
 import "./globals.css";
 
 const mono = JetBrains_Mono({
@@ -82,10 +84,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // Also from src/proxy.ts. On Arabic pages lang/dir belong on <html>, so the shared header,
   // footer and the [lang="ar"] font rule cover the whole document, not just the page body.
   const lang: Lang = requestHeaders.get("x-lang") === "ar" ? "ar" : "en";
+  const dict = getDict(lang);
   return (
     <html
       lang={lang}
-      dir={getDict(lang).dir}
+      dir={dict.dir}
       data-fx="full"
       suppressHydrationWarning
       className={`${mono.variable} ${plex.variable} ${chakra.variable} ${shippori.variable} ${plexArabic.variable} h-full antialiased`}
@@ -106,14 +109,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           telemetry={false}
         >
           <FxProvider>
-            <SkipLink />
+            <LangSync lang={lang} />
+            <SkipLink label={dict.chrome.skip} />
             <ShinobiBackdrop />
-            <CommandPalette />
-            <Header />
+            <CommandPalette commands={commandsFor(lang)} t={dict.chrome.palette} />
+            <Header lang={lang} />
             <main id="main" className="flex-1">
               {children}
             </main>
-            <Footer />
+            <Footer lang={lang} />
             <div aria-hidden="true" className="grain" />
           </FxProvider>
         </ClerkProvider>
