@@ -69,6 +69,20 @@ describe("renderWriteup: images and links", () => {
     expect(html).toContain('rel="nofollow noopener noreferrer"');
     expect(html).toContain('target="_blank"');
   });
+  it("hardens protocol-relative links too", () => {
+    const html = r("[x](//evil.example/p)");
+    expect(html).toContain('href="//evil.example/p"');
+    expect(html).toContain('rel="nofollow noopener noreferrer"');
+    expect(html).toContain('target="_blank"');
+  });
+  it("percent-encodes backslashes, so /\\ can't act as a protocol-relative link", () => {
+    expect(r("[x](/\\evil.example)")).toContain('href="/%5Cevil.example"');
+  });
+  it("leaves same-site links alone", () => {
+    const html = r("[team](/teams/SE)");
+    expect(html).toContain('href="/teams/SE"');
+    expect(html).not.toContain("nofollow");
+  });
   it("keeps mailto", () => expect(r("[mail](mailto:a@b.co)")).toContain('href="mailto:a@b.co"'));
   it("allows the dev files origin", () => expect(renderWriteup("![x](/dev-files/u/a/b.png)", { filesOrigin: "/dev-files" })).toContain("<img"));
 });

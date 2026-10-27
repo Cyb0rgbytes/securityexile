@@ -103,13 +103,17 @@ function rehypeHeadingIds() {
   };
 }
 
-/** External links open in a new tab and pass no referrer or ranking. Runs after sanitize. */
+/**
+ * External links open in a new tab and pass no referrer or ranking. Runs after sanitize.
+ * Protocol-relative hrefs ("//evil.example", and "/\" which browsers read the same way) are
+ * external too: sanitize lets them through as relative URLs.
+ */
 function rehypeExternalLinks() {
   return (tree: HastRoot) => {
     visit(tree, "element", (node: Element) => {
       if (node.tagName !== "a") return;
       const href = String(node.properties?.href ?? "");
-      if (/^https?:\/\//i.test(href)) node.properties = { ...node.properties, rel: ["nofollow", "noopener", "noreferrer"], target: "_blank" };
+      if (/^(?:https?:)?[\\/]{2}/i.test(href)) node.properties = { ...node.properties, rel: ["nofollow", "noopener", "noreferrer"], target: "_blank" };
     });
   };
 }

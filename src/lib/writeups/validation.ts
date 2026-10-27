@@ -13,6 +13,21 @@ export function parseTags(raw: string): string[] | { error: string } {
   return tags;
 }
 
+/**
+ * Ceiling on a writeup's rendered HTML. D1 rows top out at 2 MB and the row also carries the
+ * Markdown, so an oversized render would fail the insert with an unhandled error. Real writeups
+ * at the 100 000-character limit render to about 0.7 MB at worst (wall-to-wall highlighted code);
+ * reaching this takes something like tens of thousands of blank terminal lines.
+ */
+export const MAX_BODY_HTML_BYTES = 1_000_000;
+export const BODY_TOO_LARGE = "This writeup renders too large to store. Trim long terminal output or split it into a series.";
+
+export function bodyHtmlTooLarge(html: string): boolean {
+  // Cheap bound first: UTF-8 never takes more than 3 bytes per UTF-16 code unit.
+  if (html.length * 3 <= MAX_BODY_HTML_BYTES) return false;
+  return new TextEncoder().encode(html).byteLength > MAX_BODY_HTML_BYTES;
+}
+
 const optionalId = z.union([z.literal(""), idSchema]);
 
 export const writeupInputSchema = z.object({

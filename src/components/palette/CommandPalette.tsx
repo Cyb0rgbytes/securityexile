@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { redeemSecret } from "@/app/me/actions";
+import type { Dict } from "@/lib/i18n";
 import { filterCommands, type Command } from "@/lib/palette/commands";
 
 /** Dispatch on window to open the palette from anywhere (the header button does). */
@@ -13,7 +14,7 @@ export const PALETTE_EVENT = "se:palette";
  * trap, the inert background and Escape; we only add the list keys. Destinations only —
  * nothing here mutates data.
  */
-export function CommandPalette() {
+export function CommandPalette({ commands, t }: { commands: Command[]; t: Dict["chrome"]["palette"] }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -21,7 +22,7 @@ export function CommandPalette() {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const listId = useId();
-  const results = filterCommands(query);
+  const results = filterCommands(query, commands);
 
   const open = useCallback(() => {
     setQuery("");
@@ -83,7 +84,7 @@ export function CommandPalette() {
   return (
     <dialog
       ref={ref}
-      aria-label="Command palette"
+      aria-label={t.dialog}
       className="palette m-0 mx-auto mt-[12vh] w-[min(34rem,calc(100vw-2rem))] rounded-lg border border-line-strong bg-bg-deep p-0 text-fg backdrop:bg-bg-deep/70 backdrop:backdrop-blur-sm"
       onClose={() => setQuery("")}
       // A click landing on the dialog itself is a click on the backdrop; the panel fills it.
@@ -93,7 +94,7 @@ export function CommandPalette() {
     >
       <div className="border-b border-line p-3">
         <label htmlFor="palette-input" className="sr-only">
-          Search for a page
+          {t.search}
         </label>
         <input
           id="palette-input"
@@ -103,7 +104,7 @@ export function CommandPalette() {
           aria-expanded="true"
           aria-controls={listId}
           aria-activedescendant={results.length ? `${listId}-${active}` : undefined}
-          placeholder="Jump to…"
+          placeholder={t.placeholder}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -121,9 +122,9 @@ export function CommandPalette() {
       )}
 
       {results.length === 0 ? (
-        <p className="p-4 text-sm text-fg-muted">{pending ? "Checking…" : "No matches."}</p>
+        <p className="p-4 text-sm text-fg-muted">{pending ? t.checking : t.none}</p>
       ) : (
-        <ul id={listId} role="listbox" aria-label="Results" className="max-h-[50vh] overflow-y-auto p-1">
+        <ul id={listId} role="listbox" aria-label={t.results} className="max-h-[50vh] overflow-y-auto p-1">
           {results.map((c, i) => (
             <li
               key={c.id}
@@ -143,7 +144,7 @@ export function CommandPalette() {
         </ul>
       )}
 
-      <p className="border-t border-line px-3 py-2 font-mono text-[0.7rem] text-fg-muted">↑↓ move · ↵ open · esc close</p>
+      <p className="border-t border-line px-3 py-2 font-mono text-[0.7rem] text-fg-muted">{t.hint}</p>
     </dialog>
   );
 }
