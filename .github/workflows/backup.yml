@@ -1,0 +1,61 @@
+name: Backup
+# Build Plan p1-08: nightly D1 + R2 backup, encrypted with age, kept off Cloudflare as an artifact.
+# Only the owner's offline age key can decrypt it (docs/STAGE-1-RUNBOOK.md). The repo is public,
+# so the artifact is downloadable by anyone signed in to GitHub: never upload it unencrypted.
+on:
+  schedule:
+    - cron: "17 2 * * *" # 02:17 UTC, 06:17 in the UAE: the quietest hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Check configuration
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          case "$RECIPIENT" in age1*) ;; *) echo "::error::Set the BACKUP_AGE_RECIPIENT repository variable to your age public key"; exit 1 ;; esac
+
+      - name: Export D1 and R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.BACKUP_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.BACKUP_R2_ENDPOINT }}
+        run: node scripts/backup.mjs --remote --out "$RUNNER_TEMP/backup"
+
+      - name: Encrypt
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -o pipefail
+          name="securityexile-$(date -u +%F)"
+          tar -czf - -C "$RUNNER_TEMP/backup" . | age --recipient "$RECIPIENT" --output "$RUNNER_TEMP/$name.tar.gz.age"
+          rm -rf "$RUNNER_TEMP/backup"
+          echo "NAME=$name" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ runner.temp }}/${{ env.NAME }}.tar.gz.age
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error

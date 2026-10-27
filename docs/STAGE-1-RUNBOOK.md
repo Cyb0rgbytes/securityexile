@@ -12,7 +12,7 @@ Each section maps to a tracker task id. Tick it in the tracker once it's done.
 | p1-05 Branding | you + code | logo and colours done; social banners still open |
 | p1-06 Terms + AUP | code + your legal review | draft live at `/terms`, `/ar/terms` |
 | p1-07 Privacy policy | code + your legal review | draft live at `/privacy`, `/ar/privacy` |
-| p1-08 Off-host backups + restore test | you | steps below |
+| p1-08 Off-host backups + restore test | code + your setup | nightly workflow and drill built; one-time setup below |
 | p1-09 Logs to a SIEM | you | steps below |
 | p1-10 Private repo for config + challenges | you | layout below |
 
@@ -52,12 +52,66 @@ Four trust zones. No zone reaches into another except along the arrows.
 - Harden on day one: SSH keys only, no root login, `ufw` allowing 22 (from your IP or VPN) plus 80/443 only, unattended upgrades, fail2ban.
 
 ## p1-08 Backups (a backup you've never restored doesn't count)
-- **This app (D1)**: Time Travel keeps 30 days automatically. Also take a weekly off-Cloudflare export:
-  `npx wrangler d1 export DB --remote --output backups/d1-$(date +%F).sql`
-  and store it somewhere encrypted that isn't Cloudflare (e.g. a private bucket with another provider).
-- **R2 uploads**: sync weekly to a second provider (`rclone sync`).
-- **CTFd** (once deployed): nightly `mysqldump` + the uploads volume → encrypted (`restic`) → off-host bucket. Keep 7 daily, 4 weekly, 6 monthly.
-- **Restore drill**: once a month, restore the latest D1 export into a local DB (`wrangler d1 execute DB --local --file …`) and the CTFd dump into a throwaway VM, then log in. Note the date in the tracker.
+
+**This app** is backed up nightly by `.github/workflows/backup.yml`, which runs at 02:17 UTC:
+- `scripts/backup.mjs` exports the D1 schema and data, and copies every R2 upload.
+- It writes a `manifest.json` with SHA-256 hashes and a row count for every table.
+- `age` encrypts the result to your public key, and it's kept as a GitHub Actions artifact for
+  90 days.
+
+That keeps a copy outside Cloudflare. D1 Time Travel (30 days) also still covers point-in-time
+restores inside Cloudflare.
+
+The repo is public, so anyone signed in to GitHub can download the artifacts. The encryption is
+what protects them: only your offline key can open them.
+
+### One-time setup (you)
+1. **Install age and make your key.** Keep the private key off GitHub:
+   ```powershell
+   winget install FiloSottile.age
+   age-keygen -o security-exile-backup.key
+   ```
+   The command prints `Public key: age1…`. Put the whole `.key` file in your password manager,
+   then delete it from disk. **Without it, every backup is unreadable.**
+2. **GitHub → repo → Settings → Secrets and variables → Actions:**
+   - **Variable** `BACKUP_AGE_RECIPIENT` = the `age1…` public key.
+   - **Secret** `CLOUDFLARE_ACCOUNT_ID` = your account ID (Workers & Pages overview).
+   - **Secret** `BACKUP_CLOUDFLARE_API_TOKEN`: an account API token with D1 access and nothing
+     else. Try **D1: Read** first. If the export fails with a permission error, switch it to
+     **D1: Edit**.
+   - **Secrets** `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`: R2 → Manage API tokens
+     → create a token with **Object Read only**, scoped to `security-exile-uploads`.
+   - **Secret** `BACKUP_R2_ENDPOINT`: the bucket's S3 API URL from its R2 settings, such as
+     `https://<account-id>.r2.cloudflarestorage.com`. Use the `.eu.` form if the bucket is in the
+     EU jurisdiction.
+3. **Actions → Backup → Run workflow** once. Check that an artifact named
+   `securityexile-YYYY-MM-DD` appears.
+
+If the R2 secrets are missing, the backup still runs with D1 only, and its manifest records
+`"r2": null`.
+
+### Monthly restore drill (you, about 5 minutes)
+```powershell
+gh run download --repo Cyb0rgbytes/securityexile --name securityexile-YYYY-MM-DD --dir backup-drill
+# save your key from the password manager as a temporary file, then:
+node scripts/restore-drill.mjs backup-drill\securityexile-YYYY-MM-DD.tar.gz.age --key security-exile-backup.key
+Remove-Item -Recurse backup-drill, security-exile-backup.key
+```
+The drill checks the hashes, loads the backup into a throwaway local D1 (never your dev or
+production database) and compares every table's rows and the R2 object count with the manifest.
+`RESTORE DRILL PASSED` means it worked. Note the date on p1-08.
+
+**A real restore** into production is the same files in the same order, run with `--remote`
+after your explicit go-ahead:
+```powershell
+npx wrangler d1 execute DB --remote --file schema.sql
+npx wrangler d1 execute DB --remote --file data.sql
+```
+Do it into a new, empty database first if you can.
+
+**CTFd** (once deployed): run `mysqldump` nightly and back up the uploads volume, encrypted with
+`restic`, to an off-host bucket. Keep 7 daily, 4 weekly and 6 monthly copies. Test-restore it
+into a throwaway VM and log in.
 
 ## p1-09 SIEM
 - Run Wazuh (manager on the ops VPS, or Wazuh Cloud) with agents on the CTF VPS and later the labs hosts.
