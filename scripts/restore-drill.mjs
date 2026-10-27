@@ -7,17 +7,16 @@
 // R2 object count with the manifest. The temp directory, plaintext included, is deleted on exit.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { d1Rows, wrangler } from "./lib/wrangler.mjs";
 
 const input = process.argv[2];
 const key = process.argv.includes("--key") ? process.argv[process.argv.indexOf("--key") + 1] : null;
 if (!input || !existsSync(input)) throw new Error("usage: restore-drill.mjs <backup> [--key <identity file>]");
 
-const win = process.platform === "win32";
-const path = (p) => (win ? `"${p}"` : p);
-const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", shell: win, stdio: ["ignore", "pipe", "inherit"] });
+const run = (cmd, args) => execFileSync(cmd, args, { stdio: ["ignore", "inherit", "inherit"] });
 
 const tmp = mkdtempSync(join(tmpdir(), "se-restore-"));
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
@@ -28,11 +27,11 @@ if (!statSync(input).isDirectory()) {
   if (input.endsWith(".age")) {
     if (!key) throw new Error("an .age backup needs --key <identity file>");
     archive = join(tmp, "backup.tar.gz");
-    run("age", ["--decrypt", "--identity", path(key), "--output", path(archive), path(input)]);
+    run("age", ["--decrypt", "--identity", key, "--output", archive, input]);
   }
   dir = join(tmp, "backup");
   mkdirSync(dir);
-  run("tar", ["-xzf", path(archive), "-C", path(dir)]);
+  run("tar", ["-xzf", archive, "-C", dir]);
 }
 
 const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
@@ -43,18 +42,14 @@ for (const p of parts) {
 }
 
 const state = join(tmp, "state");
-const local = ["wrangler", "d1", "execute", "DB", "--local", "--persist-to", path(state)];
+const local = ["--local", "--persist-to", state];
 // Schema first, then data: the same order a real restore into D1 needs.
-for (const p of parts) run("npx", [...local, "--yes", "--file", path(join(dir, p.file))]);
-function d1(query) {
-  const file = join(tmp, "q.sql");
-  writeFileSync(file, query);
-  return JSON.parse(run("npx", [...local, "--json", "--file", path(file)])).at(-1)?.results ?? [];
-}
+for (const p of parts) wrangler(["d1", "execute", "DB", ...local, "--yes", "--file", join(dir, p.file)]);
+const d1 = (sql) => d1Rows(local, sql);
 
 const expected = manifest.d1.tables;
 // One row, one column per table, as in backup.mjs (D1 caps the terms in a compound SELECT).
-const ident = (n) => `"${n.replace(/"/g, '""')}"`;
+const ident = (n) => `\`${n.replace(/`/g, "``")}\``;
 const present = new Set(d1("select name from sqlite_master where type = 'table';").map((r) => r.name));
 const tables = Object.keys(expected).filter((n) => present.has(n));
 const restored = tables.length ? d1(`select ${tables.map((n) => `(select count(*) from ${ident(n)}) as ${ident(n)}`).join(", ")};`)[0] : {};

@@ -6,9 +6,9 @@
 // scripts/restore-drill.mjs (docs/STAGE-1-RUNBOOK.md).
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { d1Rows, wrangler } from "./lib/wrangler.mjs";
 
 // Must match r2_buckets in wrangler.jsonc.
 const BUCKET = "security-exile-uploads";
@@ -19,19 +19,8 @@ const out = process.argv.includes("--out") ? flag("--out") : null;
 if (!out) throw new Error("--out <dir> is required");
 mkdirSync(out, { recursive: true });
 
-const win = process.platform === "win32";
-// On Windows the shell is needed to find npx, so paths get quoted; elsewhere args pass through as-is.
-const path = (p) => (win ? `"${p}"` : p);
-const run = (cmd, args, env) => execFileSync(cmd, args, { encoding: "utf8", shell: win, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "inherit"] });
 const where = remote ? "--remote" : "--local";
-
-const tmp = mkdtempSync(join(tmpdir(), "se-backup-"));
-process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
-function d1(sql) {
-  const file = join(tmp, "q.sql");
-  writeFileSync(file, sql);
-  return JSON.parse(run("npx", ["wrangler", "d1", "execute", "DB", where, "--json", "--file", path(file)])).at(-1)?.results ?? [];
-}
+const d1 = (sql) => d1Rows([where], sql);
 
 /** Row count per table, so a restore can be checked against what was exported. */
 function tableCounts() {
@@ -41,7 +30,7 @@ function tableCounts() {
 
 /** One row, one column per table: D1 caps the terms in a compound SELECT, so no UNION ALL. */
 function countQuery(names) {
-  const ident = (n) => `"${n.replace(/"/g, '""')}"`;
+  const ident = (n) => `\`${n.replace(/`/g, "``")}\``;
   return `select ${names.map((n) => `(select count(*) from ${ident(n)}) as ${ident(n)}`).join(", ")};`;
 }
 
@@ -51,7 +40,7 @@ function walk(dir) {
 
 // Schema and data go in separate files: a single export creates tables alphabetically, so rows
 // would reference tables (users) that don't exist yet, and the restore fails. Schema first, then data.
-const exportTo = (file, only) => run("npx", ["wrangler", "d1", "export", "DB", where, only, "--output", path(join(out, file)), "--skip-confirmation"]);
+const exportTo = (file, only) => wrangler(["d1", "export", "DB", where, only, "--output", join(out, file), "--skip-confirmation"]);
 // The counts must describe the same moment as the export: if a write lands in between, try again.
 let tables;
 for (let attempt = 1; ; attempt++) {
@@ -73,10 +62,9 @@ let r2 = null;
 const { R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT } = process.env;
 if (remote && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_ENDPOINT) {
   const dir = join(out, "r2");
-  run("aws", ["s3", "sync", `s3://${BUCKET}`, dir, "--endpoint-url", R2_ENDPOINT, "--only-show-errors"], {
-    AWS_ACCESS_KEY_ID: R2_ACCESS_KEY_ID,
-    AWS_SECRET_ACCESS_KEY: R2_SECRET_ACCESS_KEY,
-    AWS_DEFAULT_REGION: "auto",
+  execFileSync("aws", ["s3", "sync", `s3://${BUCKET}`, dir, "--endpoint-url", R2_ENDPOINT, "--only-show-errors"], {
+    env: { ...process.env, AWS_ACCESS_KEY_ID: R2_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY: R2_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION: "auto" },
+    stdio: ["ignore", "inherit", "inherit"],
   });
   mkdirSync(dir, { recursive: true });
   const files = walk(dir);
