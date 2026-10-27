@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTags, writeupInputSchema } from "./validation";
+import { bodyHtmlTooLarge, MAX_BODY_HTML_BYTES, parseTags, writeupInputSchema } from "./validation";
 
 describe("parseTags", () => {
   it("normalizes and dedupes", () => expect(parseTags("SQLi, web ,sqli")).toEqual(["sqli", "web"]));
@@ -19,5 +19,18 @@ describe("writeupInputSchema", () => {
     const d = writeupInputSchema.parse({ ...ok, seriesOrder: "2", asTeam: "on" });
     expect(d.seriesOrder).toBe(2);
     expect(d.asTeam).toBe(true);
+  });
+});
+
+describe("bodyHtmlTooLarge", () => {
+  it("allows anything up to the ceiling", () => {
+    expect(bodyHtmlTooLarge("")).toBe(false);
+    expect(bodyHtmlTooLarge("a".repeat(MAX_BODY_HTML_BYTES))).toBe(false);
+  });
+  it("refuses one byte over", () => expect(bodyHtmlTooLarge("a".repeat(MAX_BODY_HTML_BYTES + 1))).toBe(true));
+  it("counts UTF-8 bytes, not characters", () => {
+    const arabic = "ع".repeat(MAX_BODY_HTML_BYTES / 2); // 2 bytes each: exactly at the ceiling
+    expect(bodyHtmlTooLarge(arabic)).toBe(false);
+    expect(bodyHtmlTooLarge(arabic + "ع")).toBe(true);
   });
 });

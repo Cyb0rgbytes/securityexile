@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ar } from "./ar";
 import { en } from "./en";
-import { apexAlternates, altPath, langFromPath } from "./index";
+import { apexAlternates, altPath, langFromPath, localePath } from "./index";
 import { LEGAL } from "./legal";
 
 /** Every leaf path ("hero.headline.0", ...) in a nested object. */
@@ -28,6 +28,15 @@ describe("altPath", () => {
     expect(altPath("en", "/terms")).toBe("/ar/terms");
     expect(altPath("ar", "/ar")).toBe("/");
     expect(altPath("ar", "/ar/privacy")).toBe("/privacy");
+  });
+});
+
+describe("localePath", () => {
+  it("prefixes Arabic paths and leaves English ones alone", () => {
+    expect(localePath("ar", "/")).toBe("/ar");
+    expect(localePath("ar", "/terms")).toBe("/ar/terms");
+    expect(localePath("en", "/")).toBe("/");
+    expect(localePath("en", "/terms")).toBe("/terms");
   });
 });
 
