@@ -1,7 +1,8 @@
 name: Backup
-# Build Plan p1-08: nightly D1 + R2 backup, encrypted with age, kept off Cloudflare as an artifact.
-# Only the owner's offline age key can decrypt it (docs/STAGE-1-RUNBOOK.md). The repo is public,
-# so the artifact is downloadable by anyone signed in to GitHub: never upload it unencrypted.
+# Build Plan p1-08: nightly D1 + R2 backup, kept off Cloudflare as an artifact, in a 7-Zip archive
+# encrypted with AES-256 (file names too) under the BACKUP_PASSWORD secret (docs/STAGE-1-RUNBOOK.md).
+# The repo is public, so the artifact is downloadable by anyone signed in to GitHub: never upload
+# it unencrypted.
 on:
   schedule:
     - cron: "17 2 * * *" # 02:17 UTC, 06:17 in the UAE: the quietest hour
@@ -25,13 +26,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+      - run: command -v 7z || (sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full)
 
       - name: Check configuration
         env:
-          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
         run: |
-          case "$RECIPIENT" in age1*) ;; *) echo "::error::Set the BACKUP_AGE_RECIPIENT repository variable to your age public key"; exit 1 ;; esac
+          if [ "${#BACKUP_PASSWORD}" -lt 24 ]; then echo "::error::Set the BACKUP_PASSWORD secret to a generated password of at least 24 characters"; exit 1; fi
 
       - name: Export D1 and R2
         env:
@@ -44,18 +45,18 @@ jobs:
 
       - name: Encrypt
         env:
-          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
         run: |
-          set -o pipefail
           name="securityexile-$(date -u +%F)"
-          tar -czf - -C "$RUNNER_TEMP/backup" . | age --recipient "$RECIPIENT" --output "$RUNNER_TEMP/$name.tar.gz.age"
+          # -mhe=on encrypts the file list too; -bso0 silences the progress output.
+          cd "$RUNNER_TEMP/backup" && 7z a -t7z -mx=9 -mhe=on -bso0 -p"$BACKUP_PASSWORD" "$RUNNER_TEMP/$name.7z" .
           rm -rf "$RUNNER_TEMP/backup"
           echo "NAME=$name" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.NAME }}
-          path: ${{ runner.temp }}/${{ env.NAME }}.tar.gz.age
+          path: ${{ runner.temp }}/${{ env.NAME }}.7z
           retention-days: 90
           compression-level: 0
           if-no-files-found: error

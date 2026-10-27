@@ -56,31 +56,27 @@ Four trust zones. No zone reaches into another except along the arrows.
 **This app** is backed up nightly by `.github/workflows/backup.yml`, which runs at 02:17 UTC:
 - `scripts/backup.mjs` exports the D1 schema and data, and copies every R2 upload.
 - It writes a `manifest.json` with SHA-256 hashes and a row count for every table.
-- `age` encrypts the result to your public key, and it's kept as a GitHub Actions artifact for
-  90 days.
+- The result is packed into a 7-Zip archive with AES-256 encryption, covering the file names as
+  well, under your backup password. It's kept as a GitHub Actions artifact for 90 days.
 
 That keeps a copy outside Cloudflare. D1 Time Travel (30 days) also still covers point-in-time
 restores inside Cloudflare.
 
-The repo is public, so anyone signed in to GitHub can download the artifacts. The encryption is
-what protects them: only your offline key can open them.
+The repo is public, so anyone signed in to GitHub can download the artifacts. The password is
+what protects them, so it must be long and random.
 
 ### One-time setup (you)
-1. **Install age and make your key.** Keep the private key off GitHub:
-   ```powershell
-   winget install FiloSottile.age
-   age-keygen -o security-exile-backup.key
-   ```
-   The command prints `Public key: age1…`. Put the whole `.key` file in your password manager,
-   then delete it from disk. **Without it, every backup is unreadable.**
-2. **GitHub → repo → Settings → Secrets and variables → Actions:**
-   - **Variable** `BACKUP_AGE_RECIPIENT` = the `age1…` public key.
-   - **Secret** `CLOUDFLARE_ACCOUNT_ID` = your account ID (Workers & Pages overview).
-   - **Secret** `BACKUP_CLOUDFLARE_API_TOKEN`: create an account API token with **D1: Edit**
-     (export uses D1's export API) and nothing else.
-   - **Secrets** `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`: R2 → Manage API tokens
-     → create a token with **Object Read only**, scoped to `security-exile-uploads`.
-   - **Secret** `BACKUP_R2_ENDPOINT`: the bucket's S3 API URL from its R2 settings, such as
+1. **Make the backup password.** In your password manager, generate a random password of **at
+   least 24 characters**. The workflow refuses anything shorter. Save it there as "Security Exile
+   backups". **Without it, every backup is unreadable.**
+2. **GitHub → repo → Settings → Secrets and variables → Actions → Secrets:**
+   - `BACKUP_PASSWORD` = that password.
+   - `CLOUDFLARE_ACCOUNT_ID` = your account ID (Workers & Pages overview).
+   - `BACKUP_CLOUDFLARE_API_TOKEN`: an account API token with D1 access and nothing else. Try
+     **D1: Read** first. If the export fails with a permission error, switch it to **D1: Edit**.
+   - `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`: R2 → Manage API tokens → create a
+     token with **Object Read only**, scoped to `security-exile-uploads`.
+   - `BACKUP_R2_ENDPOINT`: the bucket's S3 API URL from its R2 settings, such as
      `https://<account-id>.r2.cloudflarestorage.com`. Use the `.eu.` form if the bucket is in the
      EU jurisdiction.
 3. **Actions → Backup → Run workflow** once. Check that an artifact named
@@ -90,12 +86,15 @@ If the R2 secrets are missing, the backup still runs with D1 only, and its manif
 `"r2": null`.
 
 ### Monthly restore drill (you, about 5 minutes)
+You need 7-Zip installed (`winget install 7zip.7zip`). Then:
 ```powershell
 gh run download --repo Cyb0rgbytes/securityexile --name securityexile-YYYY-MM-DD --dir backup-drill
-# save your key from the password manager as a temporary file, then:
-node scripts/restore-drill.mjs backup-drill\securityexile-YYYY-MM-DD.tar.gz.age --key security-exile-backup.key
-Remove-Item -Recurse backup-drill, security-exile-backup.key
+node scripts/restore-drill.mjs backup-drill\securityexile-YYYY-MM-DD.7z   # 7-Zip asks for the password
+Remove-Item -Recurse backup-drill
 ```
+You can also open the `.7z` in the 7-Zip app with your password, extract it, and pass the
+folder to the drill: `node scripts/restore-drill.mjs <folder>`. If you do, delete the extracted
+folder afterwards, because it holds the data unencrypted.
 The drill checks the hashes, loads the backup into a throwaway local D1 (never your dev or
 production database) and compares every table's rows and the R2 object count with the manifest.
 `RESTORE DRILL PASSED` means it worked. Note the date on p1-08.

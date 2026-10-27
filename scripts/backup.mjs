@@ -2,7 +2,7 @@
 // Backup for Build Plan p1-08: a D1 export, the R2 uploads and a manifest the restore drill checks.
 //   node scripts/backup.mjs --out <dir>            local D1 (for trying it out)
 //   node scripts/backup.mjs --out <dir> --remote   live D1, plus R2 when the R2_* variables are set
-// .github/workflows/backup.yml runs it nightly and encrypts <dir> with age; the drill is
+// .github/workflows/backup.yml runs it nightly and encrypts <dir> into a password-protected .7z; the drill is
 // scripts/restore-drill.mjs (docs/STAGE-1-RUNBOOK.md).
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
