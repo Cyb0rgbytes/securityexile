@@ -6,6 +6,17 @@ import { BADGES, earnedBadges, type BadgeDef, type Contributions } from "./badge
 import type { Season } from "./seasons";
 import { RANK_FLOOR, XP_FOR, xpFor, type RankTier } from "./xp";
 
+/**
+ * Which roster entries count as having played, for every XP, badge and season count. Reads the
+ * aliases `er` (event_registrations), `e` (events) and `j` (json_each of the roster). Hosting your
+ * own event earns nothing: not as its creator, not for the team that hosts it, and not for a team
+ * the creator is on (teammates hosting for each other). Hidden events don't count either.
+ */
+const countsAsPlayed = sql`e.hidden_at is null
+  and coalesce(e.created_by, '') <> j.value
+  and coalesce(e.owner_team_id, '') <> er.team_id
+  and not exists (select 1 from team_members tm where tm.team_id = er.team_id and tm.user_id = e.created_by)`;
+
 export type RankedMember = { handle: string; displayName: string | null; avatarUrl: string | null; xp: number; rankTier: RankTier };
 
 /**
@@ -46,7 +57,7 @@ export async function seasonStandings(db: Db, season: Pick<Season, "startsAt" | 
       select played.uid, 0, 1 from (
         select distinct j.value as uid, er.event_id from event_registrations er
           join events e on e.id = er.event_id, json_each(er.roster_json) j
-          where e.starts_at >= ${from} and e.starts_at < ${to}
+          where e.starts_at >= ${from} and e.starts_at < ${to} and ${countsAsPlayed}
       ) played
     ) c
     join users u on u.id = c.uid
@@ -67,8 +78,9 @@ export async function contributionCounts(db: Db, userId: string): Promise<Contri
     .select({
       writeups: sql<number>`(select count(*) from writeups w
         where w.author_id = ${userId} and w.published_at is not null and w.hidden_at is null)`,
-      events: sql<number>`(select count(distinct er.event_id) from event_registrations er, json_each(er.roster_json) j
-        where j.value = ${userId})`,
+      events: sql<number>`(select count(distinct er.event_id) from event_registrations er
+        join events e on e.id = er.event_id, json_each(er.roster_json) j
+        where j.value = ${userId} and ${countsAsPlayed})`,
     })
     .from(users)
     .where(eq(users.id, userId));
@@ -132,15 +144,16 @@ export const VISIBLE_BADGE_COUNT = BADGES.filter((b) => !b.secret).length;
 /**
  * XP recomputed from scratch, mirroring xpFor():
  *  - writeups they authored that are published and not hidden;
- *  - distinct events whose roster lists them. Rosters are a JSON array on each team's
- *    registration, so this reads them with json_each rather than counting rows.
+ *  - distinct events whose roster lists them, by the countsAsPlayed rule. Rosters are a JSON
+ *    array on each team's registration, so this reads them with json_each rather than counting rows.
  */
 function xpExpression(userId: string): SQL {
   return sql`
     (select count(*) from writeups w
        where w.author_id = ${userId} and w.published_at is not null and w.hidden_at is null) * ${XP_FOR.publishedWriteup}
-    + (select count(distinct er.event_id) from event_registrations er, json_each(er.roster_json) j
-       where j.value = ${userId}) * ${XP_FOR.eventPlayed}`;
+    + (select count(distinct er.event_id) from event_registrations er
+       join events e on e.id = er.event_id, json_each(er.roster_json) j
+       where j.value = ${userId} and ${countsAsPlayed}) * ${XP_FOR.eventPlayed}`;
 }
 
 /** The ladder as a CASE, built from RANK_FLOOR so the thresholds have a single definition. */
