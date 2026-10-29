@@ -56,6 +56,15 @@ export async function findRegistration(db: Db, eventId: string, teamId: string) 
   });
 }
 
+/**
+ * Everyone on a roster of the matching registrations. Read before a delete that cascades
+ * registrations away (event delete, team disband), so their XP can be recounted with it.
+ */
+export async function rosterMembers(db: Db, where: SQL): Promise<string[]> {
+  const rows = await db.select({ roster: eventRegistrations.roster }).from(eventRegistrations).where(where);
+  return [...new Set(rows.flatMap((r) => r.roster))];
+}
+
 /** War-room board for one team; claimer handle joined for display. */
 export async function listChallenges(db: Db, eventId: string, teamId: string) {
   return db

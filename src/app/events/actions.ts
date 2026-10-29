@@ -14,7 +14,7 @@ import { newId } from "@/lib/db/ids";
 import { auditLog, challenges, eventRegistrations, events, teamMembers, writeups } from "@/lib/db/schema";
 import { actorFor, type EventViewer } from "@/lib/events/context";
 import { canEvent, canHostAsTeam, deleteAllowed, type EventAction } from "@/lib/events/permissions";
-import { findEventBySlug, findRegistration } from "@/lib/events/queries";
+import { findEventBySlug, findRegistration, rosterMembers } from "@/lib/events/queries";
 import { eventPhase, registrationOpen } from "@/lib/events/timing";
 import { eventInputSchema, slugify, slugParamSchema, validateWindow } from "@/lib/events/validation";
 import { awardBadges, recountXp } from "@/lib/profile/queries";
@@ -177,10 +177,14 @@ export async function deleteEvent(slug: string, _prev: ActionState, form: FormDa
   // Every write re-checks "no other team registered", in one transaction, so a
   // registration landing after the count above can't be wiped by the cascade.
   const noOthers = sql`not exists (select 1 from ${eventRegistrations} where ${eventRegistrations.eventId} = ${event.id} and ${eventRegistrations.teamId} <> ${host})`;
+  // The cascade takes the registrations with it, so everyone on a roster loses this event's XP.
+  const played = await rosterMembers(db, eq(eventRegistrations.eventId, event.id));
   const [, deleted] = await db.batch([
     // event_id becomes null via the FK; drop the lock with it.
     db.update(writeups).set({ spoilerUntil: null }).where(and(eq(writeups.eventId, event.id), noOthers)),
     db.delete(events).where(and(eq(events.id, event.id), noOthers)).returning({ id: events.id }),
+    // After the delete, so the recount sees the registrations gone (a no-op if noOthers stopped it).
+    ...played.flatMap((id) => recountXp(db, id)),
   ]);
   if (deleted.length === 0) return { error: "Events can only be deleted before they start and before other teams register." };
   await db.insert(auditLog).values(auditEntry({ teamId: event.ownerTeamId, actorId: member.id, action: "event.delete", targetId: event.id, meta: { title: event.title } }));
@@ -192,8 +196,11 @@ export async function setEventHidden(slug: string, hidden: boolean): Promise<Act
   const ctx = await authorizeEvent(slug, "event.hide");
   if ("error" in ctx) return { error: ctx.error };
   const { db, member, event } = ctx;
+  // Hidden events earn no XP (countsAsPlayed), so everyone who played it is recounted.
+  const played = await rosterMembers(db, eq(eventRegistrations.eventId, event.id));
   await db.batch([
     db.update(events).set({ hiddenAt: hidden ? new Date() : null }).where(eq(events.id, event.id)),
+    ...played.flatMap((id) => recountXp(db, id)),
     db.insert(auditLog).values(
       auditEntry({ teamId: null, actorId: member.id, action: hidden ? "event.hide" : "event.unhide", targetId: event.id, meta: { title: event.title } }),
     ),

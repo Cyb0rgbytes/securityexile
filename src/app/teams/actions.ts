@@ -15,7 +15,9 @@ import { getDb, getEnv, getSecret, type Db } from "@/lib/db/client";
 import { TEAM_ROLES } from "@/lib/db/enums";
 import { isUniqueViolation as isUnique } from "@/lib/db/errors";
 import { newId } from "@/lib/db/ids";
-import { auditLog, inviteCodes, inviteRedemptions, joinRequests, teamMembers, teams, users } from "@/lib/db/schema";
+import { auditLog, eventRegistrations, inviteCodes, inviteRedemptions, joinRequests, teamMembers, teams, users } from "@/lib/db/schema";
+import { rosterMembers } from "@/lib/events/queries";
+import { recountXp } from "@/lib/profile/queries";
 import { hit, LIMITS, retryMessage } from "@/lib/security/rate-limit";
 import { auditEntry } from "@/lib/teams/audit";
 import { formatInviteCode, generateInviteCode, hashInviteCode, hashIp, maskedHint, normalizeInviteCode } from "@/lib/teams/invites";
@@ -419,8 +421,10 @@ export async function leaveTeam(tag: string, _prev: ActionState, form: FormData)
 
   if (othersCount === 0) {
     // Last member out: the team is disbanded (memberships, codes, requests and
-    // its audit log go with it via ON DELETE CASCADE).
-    await db.delete(teams).where(eq(teams.id, team.id));
+    // its audit log go with it via ON DELETE CASCADE). Its event registrations cascade too,
+    // so everyone who played on its rosters is recounted in the same transaction.
+    const played = await rosterMembers(db, eq(eventRegistrations.teamId, team.id));
+    await db.batch([db.delete(teams).where(eq(teams.id, team.id)), ...played.flatMap((id) => recountXp(db, id))]);
     revalidatePath("/teams");
     redirect("/teams");
   }
